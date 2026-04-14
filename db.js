@@ -149,6 +149,7 @@ function initDb() {
   seedDefaultSettings(db);
   seedWatchlist(db);
   seedCustomTargets(db);
+  seedMissingTargets(db);
 
   console.log('[DB] Initialized successfully');
   return db;
@@ -275,6 +276,29 @@ function seedCustomTargets(db) {
     VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP,'stable')
     ON CONFLICT(player_id, card_set, grade) DO NOTHING
   `).run(schaefer.id, 'Matthew Schaefer', 'SP Game Used Blue Auto', 'RAW', 500, 3);
+}
+
+// ── Fill gaps: add any CARD_TARGETS entries missing for existing players ───────
+// Idempotent — safe to run on every startup. Handles:
+//   • New sets added to CARD_TARGETS after a player was already seeded
+//   • New players added whose sport already had existing players (no-op for them)
+//   • Blue chip players inheriting the full standard set list for their sport
+function seedMissingTargets(db) {
+  const players = db.prepare('SELECT id, sport FROM players WHERE active=1').all();
+  const hasTarget = db.prepare('SELECT 1 FROM card_targets WHERE player_id=? AND card_set=?');
+  const insertTarget = db.prepare('INSERT INTO card_targets(player_id, card_set, sport) VALUES(?,?,?)');
+
+  let added = 0;
+  for (const player of players) {
+    const targets = CARD_TARGETS[player.sport] || [];
+    for (const cardSet of targets) {
+      if (!hasTarget.get(player.id, cardSet)) {
+        insertTarget.run(player.id, cardSet, player.sport);
+        added++;
+      }
+    }
+  }
+  if (added > 0) console.log(`[DB] seedMissingTargets: filled ${added} missing card target(s)`);
 }
 
 // ── Weekly rolling spend (queries transactions — no counter to reset) ─────────
