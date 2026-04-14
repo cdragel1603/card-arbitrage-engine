@@ -1,0 +1,24 @@
+{
+  "name": "card-arbitrage-engine",
+  "version": "1.0.0",
+  "description": "CrazyCardzCo — Automated trading card arbitrage engine",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "bcrypt": "^5.1.1",
+    "better-sqlite3": "latest",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "node-cron": "^3.0.3",
+    "twilio": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

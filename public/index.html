@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CrazyCardzCo — Arbitrage Engine</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Header ────────────────────────────────────────────────────────── -->
+  <header>
+    <a class="header-logo" href="/">
+      🃏 CrazyCardzCo <span>Arbitrage Engine</span>
+    </a>
+    <div class="header-status">
+      <div id="scan-dot" class="status-dot"></div>
+      <span id="scan-label">Loading…</span>
+      <span style="color:var(--border)">|</span>
+      <span id="refresh-ticker">–</span>
+      <a href="/auth/logout" class="btn btn-ghost btn-sm" style="margin-left:0.5rem">Sign out</a>
+    </div>
+  </header>
+
+  <!-- ── Nav ───────────────────────────────────────────────────────────── -->
+  <nav id="nav">
+    <button class="nav-btn active" data-section="deals">Live Deals</button>
+    <button class="nav-btn" data-section="watchlist">Watchlist</button>
+    <button class="nav-btn" data-section="portfolio">Portfolio</button>
+    <button class="nav-btn" data-section="prices">Price Intel</button>
+    <button class="nav-btn" data-section="settings">Settings</button>
+  </nav>
+
+  <main>
+
+    <!-- ── Stats bar ─────────────────────────────────────────────────── -->
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat-card">
+        <div class="label">Active Deals</div>
+        <div class="value green" id="s-active">–</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Found Today</div>
+        <div class="value" id="s-today">–</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Cards Owned</div>
+        <div class="value gold" id="s-cards">–</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Daily Spend</div>
+        <div class="value" id="s-spend">–</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">FMV Entries</div>
+        <div class="value" id="s-fmv">–</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- LIVE DEALS                                                        -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <section id="section-deals" class="section active">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">🔥 Live Deal Feed</span>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <span id="deal-count" class="td-muted" style="font-size:0.8rem"></span>
+            <button class="btn btn-secondary btn-sm" onclick="App.scanNow()">Scan Now</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="deals-grid" class="deal-grid">
+            <div class="empty-state">
+              <div class="icon">🃏</div>
+              <p>Loading deals…</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- WATCHLIST                                                         -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <section id="section-watchlist" class="section">
+      <div class="panel" style="margin-bottom:1.25rem">
+        <div class="panel-header">
+          <span class="panel-title">Add Player to Watchlist</span>
+        </div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Player Name</label>
+              <input type="text" id="new-player-name" placeholder="e.g. Caleb Williams" />
+            </div>
+            <div class="form-row">
+              <label>Sport</label>
+              <select id="new-player-sport">
+                <option value="NFL">NFL</option>
+                <option value="NBA">NBA</option>
+                <option value="MLB">MLB</option>
+                <option value="Soccer">Soccer</option>
+                <option value="NHL">NHL</option>
+                <option value="Pokemon">Pokémon</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Tier</label>
+              <select id="new-player-tier">
+                <option value="standard">Standard (≤80% FMV)</option>
+                <option value="blue_chip">Blue Chip (≤95% FMV)</option>
+              </select>
+            </div>
+            <div class="form-row" style="display:flex;align-items:flex-end">
+              <button class="btn btn-primary" style="width:100%" onclick="App.addPlayer()">Add Player</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Tracked Players</span>
+          <span id="player-count" class="td-muted" style="font-size:0.8rem"></span>
+        </div>
+        <div class="panel-body">
+          <div id="player-grid" class="player-grid">
+            <div class="empty-state"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- PORTFOLIO                                                         -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <section id="section-portfolio" class="section">
+      <div class="portfolio-summary" id="portfolio-summary">
+        <div class="stat-card">
+          <div class="label">Total Invested</div>
+          <div class="value" id="p-invested">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Current Value</div>
+          <div class="value gold" id="p-value">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Unrealized P&L</div>
+          <div class="value" id="p-unrealized">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Realized P&L</div>
+          <div class="value" id="p-realized">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Total P&L</div>
+          <div class="value" id="p-total">–</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Transaction History</span>
+          <div style="display:flex;gap:0.5rem">
+            <select id="tx-filter" onchange="App.loadTransactions()" style="width:auto;padding:0.3rem 0.6rem;font-size:0.8rem">
+              <option value="">All</option>
+              <option value="inventory">Inventory</option>
+              <option value="grading">Grading</option>
+              <option value="sold">Sold</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Card</th>
+                <th>Bought</th>
+                <th>FMV</th>
+                <th>Disc.</th>
+                <th>Cur. Value</th>
+                <th>P&L</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tx-tbody">
+              <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--muted)">No transactions yet</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- PRICE INTEL                                                       -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <section id="section-prices" class="section">
+      <div class="panel" style="margin-bottom:1.25rem">
+        <div class="panel-header">
+          <span class="panel-title">FMV Database</span>
+          <button class="btn btn-secondary btn-sm" onclick="App.refreshComps()">Refresh Comps</button>
+        </div>
+        <div class="panel-body" style="padding-bottom:0">
+          <input type="text" id="fmv-search" placeholder="Filter by player or card…"
+            style="margin-bottom:1rem" oninput="App.filterFmv(this.value)" />
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Sport</th>
+                <th>Card Set</th>
+                <th>Grade</th>
+                <th>FMV</th>
+                <th>Comps</th>
+                <th>Trend</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody id="fmv-tbody">
+              <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--muted)">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Price chart panel -->
+      <div class="panel" id="chart-panel" style="display:none">
+        <div class="panel-header">
+          <span class="panel-title" id="chart-title">Price History</span>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('chart-panel').style.display='none'">✕</button>
+        </div>
+        <div class="panel-body">
+          <div class="chart-container">
+            <canvas id="price-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- SETTINGS                                                          -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <section id="section-settings" class="section">
+      <div class="panel" style="margin-bottom:1.25rem">
+        <div class="panel-header"><span class="panel-title">Buy Thresholds</span></div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Blue Chip Threshold (% of FMV)</label>
+              <input type="number" id="s-blue-chip" min="50" max="100" step="1" />
+            </div>
+            <div class="form-row">
+              <label>Standard Threshold (% of FMV)</label>
+              <input type="number" id="s-standard" min="50" max="100" step="1" />
+            </div>
+            <div class="form-row">
+              <label>Min Card Price ($)</label>
+              <input type="number" id="s-min-price" min="0" step="10" />
+            </div>
+            <div class="form-row">
+              <label>Max Spend Per Card ($)</label>
+              <input type="number" id="s-max-card" min="100" step="100" />
+            </div>
+            <div class="form-row">
+              <label>Max Daily Spend ($)</label>
+              <input type="number" id="s-max-day" min="100" step="100" />
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="App.saveSettings()">Save Thresholds</button>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:1.25rem">
+        <div class="panel-header"><span class="panel-title">Alerts & Automation</span></div>
+        <div class="panel-body">
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">SMS Alerts</div>
+              <div class="toggle-desc">Send SMS for deals and snipes via Twilio</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="t-sms" onchange="App.saveSetting('sms_enabled', this.checked)" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Auto-Snipe Auctions</div>
+              <div class="toggle-desc">Set max proxy bid on auctions ending in &lt;15min</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="t-snipe" onchange="App.saveSetting('auto_snipe_auctions', this.checked)" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Scanner Active</div>
+              <div class="toggle-desc">Pause/resume the deal scanner</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="t-scan" onchange="App.saveSetting('scan_active', this.checked)" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:1.25rem">
+        <div class="panel-header"><span class="panel-title">SMS</span></div>
+        <div class="panel-body">
+          <p style="font-size:0.875rem;color:var(--muted);margin-bottom:1rem">
+            Alerts go to: <strong style="color:var(--cream)">(708) 837-6553</strong>
+            &nbsp;from&nbsp; <strong style="color:var(--cream)">(602) 633-9330</strong>
+          </p>
+          <button class="btn btn-secondary" onclick="App.sendTestSms()">Send Test SMS</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Change Password</span></div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Current Password</label>
+              <input type="password" id="cur-pass" />
+            </div>
+            <div class="form-row">
+              <label>New Password</label>
+              <input type="password" id="new-pass" />
+            </div>
+          </div>
+          <button class="btn btn-secondary" onclick="App.changePassword()">Update Password</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>
