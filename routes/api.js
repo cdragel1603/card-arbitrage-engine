@@ -232,9 +232,11 @@ router.get('/settings', (req, res) => {
 // PATCH /api/settings
 router.patch('/settings', (req, res) => {
   const allowed = [
-    'max_spend_per_card', 'max_spend_per_day', 'weekly_spend_cap', 'min_card_price',
+    'max_spend_per_card', 'max_spend_per_day', 'weekly_spend_cap',
+    'max_single_snipe_usd', 'min_card_price', 'min_comp_samples',
+    'ebay_fvf_pct', 'shipping_cost_usd',
     'blue_chip_threshold', 'standard_threshold',
-    'sms_enabled', 'auto_snipe_auctions', 'scan_active',
+    'sms_enabled', 'auto_snipe_enabled', 'auto_snipe_auctions', 'scan_active',
   ];
   for (const [key, value] of Object.entries(req.body)) {
     if (allowed.includes(key)) setSetting(key, value);
@@ -308,18 +310,25 @@ router.get('/stats', (req, res) => {
   const totalPlayers = db.prepare(`SELECT COUNT(*) as n FROM players WHERE active=1`).get();
   const totalFmv     = db.prepare(`SELECT COUNT(*) as n FROM fmv_estimates WHERE fmv IS NOT NULL`).get();
 
-  const weeklyCap = parseFloat(process.env.WEEKLY_SPEND_CAP_USD || getSetting('weekly_spend_cap') || '1000');
+  const weeklyCap      = parseFloat(process.env.WEEKLY_SPEND_CAP_USD || getSetting('weekly_spend_cap')      || '1000');
+  const maxSingleSnipe = parseFloat(process.env.MAX_SINGLE_SNIPE_USD || getSetting('max_single_snipe_usd') || '250');
+  const autoSnipeDbVal = getSetting('auto_snipe_enabled');
+  const autoSnipeEnabled = autoSnipeDbVal != null
+    ? autoSnipeDbVal === 'true'
+    : (process.env.AUTO_SNIPE_ENABLED || 'false') === 'true';
 
   res.json({
-    dealsToday:   dealsToday.n,
-    activeDeals:  activeDeals.n,
-    totalCards:   totalCards.n,
-    totalPlayers: totalPlayers.n,
+    dealsToday:      dealsToday.n,
+    activeDeals:     activeDeals.n,
+    totalCards:      totalCards.n,
+    totalPlayers:    totalPlayers.n,
     totalFmvEntries: totalFmv.n,
-    dailySpend:   parseFloat(getSetting('daily_spend_today') || '0'),
-    dailyLimit:   parseFloat(getSetting('max_spend_per_day') || '5000'),
-    weeklySpend:  getWeeklySpend(),
+    dailySpend:      parseFloat(getSetting('daily_spend_today') || '0'),
+    dailyLimit:      parseFloat(getSetting('max_spend_per_day') || '5000'),
+    weeklySpend:     getWeeklySpend(),
     weeklyCap,
+    maxSingleSnipe,
+    autoSnipeEnabled,
   });
 });
 

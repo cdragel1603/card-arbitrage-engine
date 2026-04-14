@@ -22,6 +22,10 @@
       <span id="refresh-ticker">–</span>
       <span style="color:var(--border)">|</span>
       <span id="weekly-spend-indicator" title="Rolling 7-day snipe spend vs cap" style="font-size:0.8rem;color:var(--muted)">$– / $– this week</span>
+      <span style="color:var(--border)">|</span>
+      <span id="snipe-cap-indicator" title="Max per single snipe" style="font-size:0.8rem;color:var(--muted)">Cap $–</span>
+      <span style="color:var(--border)">|</span>
+      <span id="auto-snipe-indicator" title="Auto-snipe status" style="font-size:0.8rem;color:var(--muted)">Auto-snipe –</span>
       <a href="/auth/logout" class="btn btn-ghost btn-sm" style="margin-left:0.5rem">Sign out</a>
     </div>
   </header>
@@ -288,6 +292,22 @@
               <label>Weekly Spend Cap ($)</label>
               <input type="number" id="s-weekly-cap" min="100" step="100" />
             </div>
+            <div class="form-row">
+              <label>Max Single Snipe ($)</label>
+              <input type="number" id="s-max-snipe" min="50" step="50" />
+            </div>
+            <div class="form-row">
+              <label>Min Comp Samples</label>
+              <input type="number" id="s-min-comps" min="1" step="1" />
+            </div>
+            <div class="form-row">
+              <label>eBay Final Value Fee (%)</label>
+              <input type="number" id="s-fvf-pct" min="0" max="25" step="0.5" />
+            </div>
+            <div class="form-row">
+              <label>Shipping Cost ($)</label>
+              <input type="number" id="s-shipping" min="0" step="1" />
+            </div>
           </div>
           <button class="btn btn-primary" onclick="App.saveSettings()">Save Thresholds</button>
         </div>
@@ -308,8 +328,18 @@
           </div>
           <div class="toggle-row">
             <div>
-              <div class="toggle-label">Auto-Snipe Auctions</div>
-              <div class="toggle-desc">Set max proxy bid on auctions ending in &lt;15min</div>
+              <div class="toggle-label">Auto-Snipe Enabled</div>
+              <div class="toggle-desc">When ON, engine auto-executes qualifying buys. Keep OFF in Week 1 — approve each deal manually via SMS reply.</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="t-auto-snipe" onchange="App.saveSetting('auto_snipe_enabled', this.checked)" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">Auto-Snipe Auctions (Phase 2)</div>
+              <div class="toggle-desc">Set max proxy bid on auctions ending in &lt;15min — requires eBay Offer API approval</div>
             </div>
             <label class="toggle">
               <input type="checkbox" id="t-snipe" onchange="App.saveSetting('auto_snipe_auctions', this.checked)" />

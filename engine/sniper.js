@@ -11,15 +11,41 @@
 //   - Apply for "Buy APIs" access at developer.ebay.com
 
 const axios = require('axios');
-const { getDb, checkDailySpend, recordSpend, checkWeeklySpend } = require('../db');
+const { getDb, getSetting, checkDailySpend, recordSpend, checkWeeklySpend } = require('../db');
 const { getEbayToken } = require('../scanner/ebay');
+
+// ── Guardrail 5: Auto-snipe gate ─────────────────────────────────────────────
+function isAutoSnipeEnabled() {
+  // Prefer live DB setting so Connor can flip it in Settings without a redeploy.
+  const dbVal = getSetting('auto_snipe_enabled');
+  if (dbVal != null) return dbVal === 'true';
+  return (process.env.AUTO_SNIPE_ENABLED || 'false') === 'true';
+}
+
+// ── Guardrail 1: Per-card cap check ─────────────────────────────────────────
+function checkSingleSnipeCap(amount) {
+  const cap = parseFloat(getSetting('max_single_snipe_usd') || process.env.MAX_SINGLE_SNIPE_USD || '250');
+  return { cap, canSnipe: amount <= cap };
+}
 
 // ── Place proxy bid on eBay auction ─────────────────────────────────────────
 // NOTE: Requires eBay Offer API access (apply separately from Browse API).
 async function placeProxyBid(itemId, maxBid, { dryRun = false } = {}) {
+  // Guardrail 5: auto-snipe must be explicitly enabled
+  if (!isAutoSnipeEnabled()) {
+    console.log('[Sniper] Auto-snipe disabled (AUTO_SNIPE_ENABLED=false). Skipping proxy bid.');
+    return { success: false, reason: 'Auto-snipe disabled — set AUTO_SNIPE_ENABLED=true to enable.' };
+  }
+
   if (dryRun) {
     console.log(`[Sniper] DRY RUN — would bid $${maxBid} on ${itemId}`);
     return { success: true, dryRun: true, itemId, maxBid };
+  }
+
+  // Guardrail 1: per-card cap
+  const { canSnipe, cap: snipeCap } = checkSingleSnipeCap(maxBid);
+  if (!canSnipe) {
+    return { success: false, reason: `Per-card cap $${snipeCap} exceeded ($${maxBid})` };
   }
 
   const { canSpend } = checkDailySpend(maxBid);
@@ -61,6 +87,13 @@ async function executeBinPurchase(dealId, { dryRun = false } = {}) {
   if (dryRun) {
     console.log(`[Sniper] DRY RUN — would buy ${deal.card_description} for $${deal.listing_price}`);
     return { success: true, dryRun: true, deal };
+  }
+
+  // Guardrail 1: per-card cap (re-checked at execution time)
+  const { canSnipe, cap: snipeCap } = checkSingleSnipeCap(deal.listing_price);
+  if (!canSnipe) {
+    db.prepare("UPDATE deals SET status='passed' WHERE id=?").run(dealId);
+    return { success: false, reason: `Per-card cap $${snipeCap} exceeded ($${deal.listing_price})` };
   }
 
   const { canSpend } = checkDailySpend(deal.listing_price);

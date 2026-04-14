@@ -176,8 +176,9 @@ async function fetchSoldCompsFinding(query, opts = {}) {
 
 // ── Normalize Browse API item ────────────────────────────────────────────────
 function normalizeItem(item) {
-  const price = parseFloat(item.price?.value || item.currentBidPrice?.value || 0);
+  const price   = parseFloat(item.price?.value || item.currentBidPrice?.value || 0);
   const endTime = item.itemEndDate || null;
+  const seller  = item.seller || {};
 
   return {
     listing_id: item.itemId,
@@ -189,6 +190,12 @@ function normalizeItem(item) {
     auction_end_time: endTime,
     source: 'ebay',
     condition: item.condition || null,
+    // Guardrail 2: seller quality fields from Browse API
+    seller: {
+      username:           seller.username           ?? null,
+      feedbackPercentage: seller.feedbackPercentage != null ? parseFloat(seller.feedbackPercentage) : null,
+      feedbackScore:      seller.feedbackScore      != null ? parseInt(seller.feedbackScore, 10)    : null,
+    },
   };
 }
 

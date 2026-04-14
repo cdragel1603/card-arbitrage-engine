@@ -41,7 +41,20 @@ async function send(body) {
 }
 
 // ── BIN deal alert — Connor must reply YES to purchase ───────────────────────
-async function sendDealAlert({ dealId, playerName, cardDescription, price, fmv, discountPct, source, aiGrade }) {
+async function sendDealAlert({
+  dealId, playerName, cardDescription, price, fmv, netFmv,
+  discountPct, netDiscountPct, source, aiGrade, lowConfidenceFmv, rarity,
+}) {
+  const netStr = netFmv != null
+    ? ` → net $${netFmv.toFixed(0)} (${netDiscountPct ?? discountPct}% under net).`
+    : '.';
+
+  let confStr = '';
+  if (lowConfidenceFmv) {
+    const rarityLabel = rarity?.rarityType ? ` Serial ${rarity.rarityType}.` : '';
+    confStr = `\n⚠ Low-conf FMV (few comps).${rarityLabel}`;
+  }
+
   let gradeStr = '';
   if (aiGrade) {
     const conf = Math.round(aiGrade.confidence * 100);
@@ -50,19 +63,29 @@ async function sendDealAlert({ dealId, playerName, cardDescription, price, fmv, 
 
   const body =
     `[DEAL #${dealId}] ${playerName} — ${cardDescription}\n` +
-    `${source} BIN $${price.toFixed(0)} vs $${fmv.toFixed(0)} FMV (${discountPct}% under).` +
-    gradeStr + `\nReply YES to buy. Reply PASS to skip.`;
+    `${source} BIN $${price.toFixed(0)} vs $${fmv.toFixed(0)} FMV${netStr}` +
+    confStr + gradeStr + `\nReply YES to buy. PASS to skip.`;
   return send(body);
 }
 
 // ── Auction snipe alert — Connor can reply STOP to cancel ────────────────────
-async function sendSnipeAlert({ dealId, playerName, cardDescription, currentBid, fmv, maxBid, minsLeft }) {
-  const discountPct = Math.round((1 - currentBid / fmv) * 100);
+async function sendSnipeAlert({
+  dealId, playerName, cardDescription, currentBid, fmv, netFmv, maxBid, minsLeft,
+  lowConfidenceFmv, rarity,
+}) {
+  const netStr = netFmv != null ? ` (net $${netFmv.toFixed(0)})` : '';
+
+  let confStr = '';
+  if (lowConfidenceFmv) {
+    const rarityLabel = rarity?.rarityType ? ` Serial ${rarity.rarityType}.` : '';
+    confStr = `\n⚠ Low-conf FMV.${rarityLabel}`;
+  }
+
   const body =
     `[SNIPE #${dealId}] ${playerName} — ${cardDescription}\n` +
-    `Auction ends ${minsLeft}min — current $${currentBid.toFixed(0)} vs $${fmv.toFixed(0)} FMV.\n` +
-    `Max bid set at $${maxBid.toFixed(0)} (${Math.round((1 - maxBid / fmv) * 100 * -1 + 100)}% of FMV).\n` +
-    `Reply STOP to cancel.`;
+    `Auction ends ${minsLeft}min — current $${currentBid.toFixed(0)} vs $${fmv.toFixed(0)} FMV${netStr}.\n` +
+    `Max bid: $${maxBid.toFixed(0)}.` +
+    confStr + `\nReply STOP to cancel.`;
   return send(body);
 }
 

@@ -4,17 +4,50 @@ const { getDb, getSetting, checkWeeklySpend } = require('../db');
 const { sendDealAlert, sendSnipeAlert } = require('../alerts/sms');
 const { gradeCard } = require('./condition-grader');
 
+// ── Rarity classifier ─────────────────────────────────────────────────────────
+// Detects serial-numbered and 1/1 cards from listing title/description.
+// Rare cards get relaxed comp-sample requirements.
+function classifyRarity(text) {
+  const s = String(text || '');
+
+  // 1-of-1 patterns
+  if (/\b1\/1\b/.test(s) || /\b1\s+of\s+1\b/i.test(s) || /\bone[\s-]of[\s-]one\b/i.test(s)) {
+    return { isRare: true, rarityType: '1/1' };
+  }
+
+  // Serial numbered: /35, /50, /99, /100, /150, /199, #/35, etc.
+  const serialMatch = s.match(/#?\/(\d{1,4})\b/);
+  if (serialMatch) {
+    const n = parseInt(serialMatch[1], 10);
+    if (n <= 199) {
+      return { isRare: true, rarityType: `/${n}`, serialN: n };
+    }
+  }
+
+  // "numbered" or "serial" keyword
+  if (/\bnumbered\b/i.test(s) || /\bserial\s*#/i.test(s)) {
+    return { isRare: true, rarityType: 'numbered' };
+  }
+
+  return { isRare: false, rarityType: null };
+}
+
 // ── Apply buy rules to a listing ─────────────────────────────────────────────
-// Returns { isDeal, reason, maxBid } or null if no deal.
+// Returns evaluation object or null if listing doesn't qualify.
 function evaluateListing({ listing, fmvRow, tier }) {
   if (!fmvRow || !fmvRow.fmv) return null;
 
-  const fmv = fmvRow.fmv;
+  const fmv   = fmvRow.fmv;
   const price = listing.price;
-  const threshold = tier === 'blue_chip'
-    ? parseFloat(getSetting('blue_chip_threshold') || '0.95')
-    : parseFloat(getSetting('standard_threshold') || '0.80');
 
+  // ── Guardrail 1: Per-card snipe cap ──────────────────────────────────────
+  const maxSingleSnipe = parseFloat(getSetting('max_single_snipe_usd') || process.env.MAX_SINGLE_SNIPE_USD || '250');
+  if (price > maxSingleSnipe) {
+    console.log(`[DealDetector] Skip (per-card cap $${maxSingleSnipe}): $${price} — ${listing.description}`);
+    return null;
+  }
+
+  // ── Min / max price bounds ─────────────────────────────────────────────────
   const minPrice = parseFloat(getSetting('min_card_price') || '100');
   const maxPrice = tier === 'blue_chip'
     ? Infinity
@@ -23,17 +56,49 @@ function evaluateListing({ listing, fmvRow, tier }) {
   if (price < minPrice) return null;
   if (price > maxPrice) return null;
 
-  const targetPrice = fmv * threshold;
-  const discountPct = Math.round((1 - price / fmv) * 100);
+  // ── Guardrail 4: Net-of-fees deal math (20% under net FMV) ───────────────
+  // net_fmv = FMV × (1 − eBay FVF %) − shipping; qualify if price ≤ net_fmv × 0.80
+  const ebayFvfPct      = parseFloat(getSetting('ebay_fvf_pct')      || process.env.EBAY_FVF_PCT      || '0.13');
+  const shippingCostUsd = parseFloat(getSetting('shipping_cost_usd') || process.env.SHIPPING_COST_USD || '5');
+  const netFmv          = fmv * (1 - ebayFvfPct) - shippingCostUsd;
+  const targetPrice     = netFmv * 0.80;
 
   if (price > targetPrice) return null;
+
+  const discountPct    = Math.round((1 - price / fmv)    * 100);
+  const netDiscountPct = Math.round((1 - price / netFmv) * 100);
+
+  // ── Guardrail 3: Comp sample size with rarity exception ──────────────────
+  const minCompSamples = parseInt(getSetting('min_comp_samples') || process.env.MIN_COMP_SAMPLES || '5', 10);
+  const rarity = classifyRarity(listing.title || listing.description);
+  let lowConfidenceFmv = false;
+
+  if ((fmvRow.sample_count || 0) < minCompSamples) {
+    if (!rarity.isRare) {
+      console.log(
+        `[DealDetector] Skip (${fmvRow.sample_count || 0} comps < ${minCompSamples} min, not serial): ` +
+        listing.description
+      );
+      return null;
+    }
+    // Serial/rare card — relax comp requirement, flag as low confidence
+    lowConfidenceFmv = true;
+    console.log(
+      `[DealDetector] Rare (${rarity.rarityType}) — ${fmvRow.sample_count || 0} comp(s) used as low-confidence FMV: ` +
+      listing.description
+    );
+  }
 
   return {
     isDeal: true,
     fmv,
+    netFmv: Math.round(netFmv * 100) / 100,
     discountPct,
-    threshold,
+    netDiscountPct,
+    targetPrice: Math.floor(targetPrice * 100) / 100,
     maxBid: Math.floor(targetPrice * 100) / 100,
+    rarity,
+    lowConfidenceFmv,
   };
 }
 
@@ -71,12 +136,23 @@ function saveDeal({ listing, fmv, discountPct, playerName }) {
   return result.lastInsertRowid;
 }
 
-// ── Run AI vision grading on a raw card deal ─────────────────────────────────
+// ── Guardrail 6: Run AI vision grading — raw cards only ──────────────────────
+// Skips slabbed cards (PSA/BGS/SGC/CGC/HGA/GRADED/SLAB keywords in title).
 // Returns null gracefully if grading fails or is skipped.
 async function runGraderIfRaw(db, listing, player, dealId) {
-  // Only grade raw/ungraded cards
-  const isRaw = !listing.grade || /^raw$/i.test(String(listing.grade).trim());
-  if (!isRaw) return null;
+  // Skip if grade field explicitly indicates a known slab
+  const gradeStr = String(listing.grade || '').trim();
+  const isGraded = gradeStr && !/^raw$/i.test(gradeStr);
+  if (isGraded) return null;
+
+  // Guardrail 6: Skip if listing title contains slab-house keywords
+  const slabPattern = /\b(PSA|BGS|SGC|CGC|HGA|GRADED|SLAB)\b/i;
+  const titleText = String(listing.title || listing.description || '');
+  if (slabPattern.test(titleText)) {
+    console.log(`[Grader] Skipping slab (title keyword): ${listing.description}`);
+    return null;
+  }
+
   if (!listing.image_url) return null;
 
   const aiGrade = await gradeCard(listing.image_url, {
@@ -102,6 +178,26 @@ async function runGraderIfRaw(db, listing, player, dealId) {
   return aiGrade;
 }
 
+// ── Guardrail 2: Seller quality filter ───────────────────────────────────────
+// Returns null if seller passes, or a string reason if they fail.
+const MIN_SELLER_FEEDBACK_PCT   = 99.0;
+const MIN_SELLER_FEEDBACK_COUNT = 50;
+
+function checkSellerQuality(listing) {
+  const seller = listing.seller;
+  if (!seller) return null; // No seller data (mock mode) — pass through
+
+  const { feedbackPercentage, feedbackScore } = seller;
+
+  if (feedbackPercentage != null && feedbackPercentage < MIN_SELLER_FEEDBACK_PCT) {
+    return `seller feedback ${feedbackPercentage}% < ${MIN_SELLER_FEEDBACK_PCT}% required`;
+  }
+  if (feedbackScore != null && feedbackScore < MIN_SELLER_FEEDBACK_COUNT) {
+    return `seller feedback count ${feedbackScore} < ${MIN_SELLER_FEEDBACK_COUNT} required`;
+  }
+  return null; // passes
+}
+
 // ── Process a batch of listings from the scanner ─────────────────────────────
 async function processListings(listings) {
   const db = getDb();
@@ -111,6 +207,13 @@ async function processListings(listings) {
     // Look up player
     const player = db.prepare('SELECT * FROM players WHERE name=? AND active=1').get(listing.player_name);
     if (!player) continue;
+
+    // ── Guardrail 2: Seller quality ───────────────────────────────────────
+    const sellerFailReason = checkSellerQuality(listing);
+    if (sellerFailReason) {
+      console.log(`[DealDetector] Skip (${sellerFailReason}): ${player.name} — ${listing.description}`);
+      continue;
+    }
 
     // Look up FMV
     const fmvRow = db.prepare(`
@@ -128,12 +231,12 @@ async function processListings(listings) {
       playerName: player.name,
     });
 
-    // ── AI condition grading (raw cards only, fails gracefully) ────────────
+    // ── AI condition grading (raw cards only, slab guard inside) ──────────
     const aiGrade = await runGraderIfRaw(db, listing, player, dealId);
 
     deals.push({ dealId, listing, player, evaluation, aiGrade });
 
-    // ── Weekly spend cap guard — skip SMS if cap would be exceeded ────────
+    // ── Weekly spend cap guard ─────────────────────────────────────────────
     const { canSpend: weeklyOk, spent: weeklySpent, cap: weeklyCap } = checkWeeklySpend(listing.price);
     if (!weeklyOk) {
       console.warn(
@@ -152,7 +255,11 @@ async function processListings(listings) {
           cardDescription: listing.description,
           price: listing.price,
           fmv: evaluation.fmv,
+          netFmv: evaluation.netFmv,
           discountPct: evaluation.discountPct,
+          netDiscountPct: evaluation.netDiscountPct,
+          lowConfidenceFmv: evaluation.lowConfidenceFmv,
+          rarity: evaluation.rarity,
           source: listing.source || 'eBay',
           aiGrade,
         });
@@ -167,8 +274,11 @@ async function processListings(listings) {
             cardDescription: listing.description,
             currentBid: listing.price,
             fmv: evaluation.fmv,
+            netFmv: evaluation.netFmv,
             maxBid: evaluation.maxBid,
             minsLeft: Math.round(minsLeft),
+            lowConfidenceFmv: evaluation.lowConfidenceFmv,
+            rarity: evaluation.rarity,
           });
           db.prepare('UPDATE deals SET sms_sent_at=CURRENT_TIMESTAMP, status=? WHERE id=?')
             .run('sms_pending', dealId);
@@ -196,4 +306,4 @@ function expireStaleDeals() {
   `).run();
 }
 
-module.exports = { evaluateListing, processListings, expireStaleDeals, saveDeal };
+module.exports = { evaluateListing, processListings, expireStaleDeals, saveDeal, classifyRarity };
