@@ -62,7 +62,7 @@ const App = (() => {
       // ── Per-snipe cap + auto-snipe header indicators ─────────────────────
       const snipeCapEl = document.getElementById('snipe-cap-indicator');
       if (snipeCapEl) {
-        snipeCapEl.textContent = `Cap $${(s.maxSingleSnipe || 250).toFixed(0)}`;
+        snipeCapEl.textContent = `Standard: $${(s.maxSingleSnipe || 250).toFixed(0)} | Blue Chip: $${(s.maxBlueChipSnipe || 500).toFixed(0)}`;
       }
 
       const autoSnipeEl = document.getElementById('auto-snipe-indicator');
@@ -453,7 +453,8 @@ const App = (() => {
       setValue('s-max-card',  s.max_spend_per_card || 2500);
       setValue('s-max-day',   s.max_spend_per_day  || 5000);
       setValue('s-weekly-cap', s.weekly_spend_cap  || 1000);
-      setValue('s-max-snipe',  s.max_single_snipe_usd || 250);
+      setValue('s-max-snipe',      s.max_single_snipe_usd    || 250);
+      setValue('s-max-blue-snipe', s.max_blue_chip_snipe_usd || 500);
       setValue('s-min-comps',  s.min_comp_samples   || 5);
       setValue('s-fvf-pct',    Math.round(parseFloat(s.ebay_fvf_pct || 0.13) * 100));
       setValue('s-shipping',   s.shipping_cost_usd  || 5);
@@ -472,7 +473,8 @@ const App = (() => {
       max_spend_per_card:  document.getElementById('s-max-card').value,
       max_spend_per_day:   document.getElementById('s-max-day').value,
       weekly_spend_cap:    document.getElementById('s-weekly-cap').value,
-      max_single_snipe_usd: document.getElementById('s-max-snipe').value,
+      max_single_snipe_usd:     document.getElementById('s-max-snipe').value,
+      max_blue_chip_snipe_usd:  document.getElementById('s-max-blue-snipe').value,
       min_comp_samples:    document.getElementById('s-min-comps').value,
       ebay_fvf_pct:        (parseFloat(document.getElementById('s-fvf-pct').value) / 100).toString(),
       shipping_cost_usd:   document.getElementById('s-shipping').value,

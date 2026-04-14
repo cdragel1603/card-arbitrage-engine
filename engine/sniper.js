@@ -22,9 +22,11 @@ function isAutoSnipeEnabled() {
   return (process.env.AUTO_SNIPE_ENABLED || 'false') === 'true';
 }
 
-// ── Guardrail 1: Per-card cap check ─────────────────────────────────────────
-function checkSingleSnipeCap(amount) {
-  const cap = parseFloat(getSetting('max_single_snipe_usd') || process.env.MAX_SINGLE_SNIPE_USD || '250');
+// ── Guardrail 1: Tier-based per-card cap check ───────────────────────────────
+function checkSingleSnipeCap(amount, tier = 'standard') {
+  const cap = tier === 'blue_chip'
+    ? parseFloat(getSetting('max_blue_chip_snipe_usd') || process.env.MAX_BLUE_CHIP_SNIPE_USD || '500')
+    : parseFloat(getSetting('max_single_snipe_usd')    || process.env.MAX_SINGLE_SNIPE_USD    || '250');
   return { cap, canSnipe: amount <= cap };
 }
 

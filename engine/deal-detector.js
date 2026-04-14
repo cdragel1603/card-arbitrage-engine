@@ -64,10 +64,15 @@ function evaluateListing({ listing, fmvRow, tier, targetRow }) {
     };
   }
 
-  // ── Guardrail 1: Per-card snipe cap (global, no override present) ─────────
-  const maxSingleSnipe = parseFloat(getSetting('max_single_snipe_usd') || process.env.MAX_SINGLE_SNIPE_USD || '250');
-  if (price > maxSingleSnipe) {
-    console.log(`[DealDetector] Skip (per-card cap $${maxSingleSnipe}): $${price} — ${listing.description}`);
+  // ── Guardrail 1: Tier-based snipe cap ────────────────────────────────────
+  // Blue chip → MAX_BLUE_CHIP_SNIPE_USD (default $500)
+  // Standard  → MAX_SINGLE_SNIPE_USD    (default $250)
+  // Per-card override (above) already returned early, so we never reach here with one set.
+  const snipeCap = tier === 'blue_chip'
+    ? parseFloat(getSetting('max_blue_chip_snipe_usd') || process.env.MAX_BLUE_CHIP_SNIPE_USD || '500')
+    : parseFloat(getSetting('max_single_snipe_usd')    || process.env.MAX_SINGLE_SNIPE_USD    || '250');
+  if (price > snipeCap) {
+    console.log(`[DealDetector] Skip (${tier} cap $${snipeCap}): $${price} — ${listing.description}`);
     return null;
   }
 
