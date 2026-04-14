@@ -52,11 +52,23 @@ const PLAYERS = [
   { name: 'Kylian Mbappe',    sport: 'Soccer',  tier: 'standard' },
   { name: 'Lamine Yamal',     sport: 'Soccer',  tier: 'standard' },
 
-  // NHL standard
+  // NHL blue chip
   { name: 'Macklin Celebrini', sport: 'NHL',    tier: 'blue_chip' },
-  { name: 'Matthew Schaefer',  sport: 'NHL',    tier: 'standard' },
   { name: 'Connor Bedard',     sport: 'NHL',    tier: 'blue_chip' },
+
+  // NHL standard
+  { name: 'Matthew Schaefer',  sport: 'NHL',    tier: 'standard' },
   { name: 'Cale Makar',        sport: 'NHL',    tier: 'standard' },
+  { name: 'Auston Matthews',   sport: 'NHL',    tier: 'standard' },
+  { name: 'Nathan MacKinnon',  sport: 'NHL',    tier: 'standard' },
+  { name: 'Leon Draisaitl',    sport: 'NHL',    tier: 'standard' },
+  { name: 'Kirill Kaprizov',   sport: 'NHL',    tier: 'standard' },
+  { name: 'Sidney Crosby',     sport: 'NHL',    tier: 'standard' },
+  { name: 'Matthew Tkachuk',   sport: 'NHL',    tier: 'standard' },
+  { name: 'Quinn Hughes',      sport: 'NHL',    tier: 'standard' },
+  { name: 'Jack Hughes',       sport: 'NHL',    tier: 'standard' },
+  { name: 'Adam Fantilli',     sport: 'NHL',    tier: 'standard' },
+  { name: 'Patrick Kane',      sport: 'NHL',    tier: 'standard' },
 ];
 
 // ── Card targets by sport ────────────────────────────────────────────────────
@@ -68,6 +80,7 @@ const CARD_TARGETS = {
     'Future Watch Auto',
     'Upper Deck Premier Rookie Patch Auto',
     'SPx Rookie Jersey Auto',
+    'Upper Deck Premier Auto',
   ],
   NFL: [
     'Kaboom',
