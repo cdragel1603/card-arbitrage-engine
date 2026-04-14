@@ -41,11 +41,17 @@ async function send(body) {
 }
 
 // ── BIN deal alert — Connor must reply YES to purchase ───────────────────────
-async function sendDealAlert({ dealId, playerName, cardDescription, price, fmv, discountPct, source }) {
+async function sendDealAlert({ dealId, playerName, cardDescription, price, fmv, discountPct, source, aiGrade }) {
+  let gradeStr = '';
+  if (aiGrade) {
+    const conf = Math.round(aiGrade.confidence * 100);
+    gradeStr = `\nAI Grade: ${aiGrade.estimatedGrade} (${conf}% conf) → ${aiGrade.recommendation}`;
+  }
+
   const body =
     `[DEAL #${dealId}] ${playerName} — ${cardDescription}\n` +
-    `${source} BIN $${price.toFixed(0)} vs $${fmv.toFixed(0)} FMV (${discountPct}% under).\n` +
-    `Reply YES to buy. Reply PASS to skip.`;
+    `${source} BIN $${price.toFixed(0)} vs $${fmv.toFixed(0)} FMV (${discountPct}% under).` +
+    gradeStr + `\nReply YES to buy. Reply PASS to skip.`;
   return send(body);
 }
 

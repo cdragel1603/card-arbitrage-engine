@@ -94,6 +94,7 @@ function initDb() {
     CREATE INDEX IF NOT EXISTS idx_deals_status ON deals(status, detected_at DESC);
 
     -- ── Transactions (bought cards) ───────────────────────────────────────
+
     CREATE TABLE IF NOT EXISTS transactions (
       id               INTEGER PRIMARY KEY AUTOINCREMENT,
       deal_id          INTEGER REFERENCES deals(id),
@@ -123,6 +124,18 @@ function initDb() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  // ── Migrations: add AI grading columns to deals if not present ─────────────
+  // ALTER TABLE ADD COLUMN throws if the column already exists, so wrap each.
+  const aiCols = [
+    'ai_grade TEXT',
+    'ai_confidence REAL',
+    'ai_recommendation TEXT',
+    'ai_details TEXT',
+  ];
+  for (const colDef of aiCols) {
+    try { db.exec(`ALTER TABLE deals ADD COLUMN ${colDef}`); } catch { /* already exists */ }
+  }
 
   seedDefaultSettings(db);
   seedWatchlist(db);

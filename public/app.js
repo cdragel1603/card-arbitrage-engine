@@ -93,13 +93,24 @@ const App = (() => {
     }
   }
 
+  function renderConditionBadge(deal) {
+    if (!deal.ai_grade) return '';
+    const recClass = {
+      'GRADE':    'condition-grade',
+      'SELL_RAW': 'condition-sell',
+      'PASS':     'condition-pass',
+    }[deal.ai_recommendation] || 'condition-grade';
+    const conf = deal.ai_confidence != null ? ` ${Math.round(deal.ai_confidence * 100)}%` : '';
+    const title = `AI Grade: ${deal.ai_grade}${conf} confidence — ${deal.ai_recommendation}`;
+    return `<span class="deal-tag ${recClass}" title="${esc(title)}">✦ ${esc(deal.ai_grade)}${conf}</span>`;
+  }
+
   function renderDealCard(deal) {
     const isAuction = deal.listing_type === 'auction';
     const minsLeft  = deal.mins_left !== null ? Math.max(0, deal.mins_left) : null;
     const endingSoon = isAuction && minsLeft !== null && minsLeft <= 5;
 
-    const tierLabel = deal.player_name ? '' : ''; // fetched separately if needed
-    const discPct   = deal.discount_pct || deal.discount_pct_calc || 0;
+    const discPct = deal.discount_pct || deal.discount_pct_calc || 0;
 
     // Determine tier from discount — blue chips have ≥5% threshold so deals appear at tighter margins
     const isBlueChip = discPct < 15; // heuristic for display
@@ -117,6 +128,7 @@ const App = (() => {
         <div class="deal-meta">
           <span class="deal-tag ${isAuction ? 'auction' : 'bin'}">${isAuction ? '⏱ Auction' : '💰 BIN'}</span>
           ${deal.grade ? `<span class="deal-tag grade">${esc(deal.grade)}</span>` : ''}
+          ${renderConditionBadge(deal)}
           ${isAuction && minsLeft !== null
             ? `<span class="deal-tag ${endingSoon ? 'ending-soon' : 'auction'}">${minsLeft}min left</span>`
             : ''}

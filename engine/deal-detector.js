@@ -2,6 +2,7 @@
 
 const { getDb, getSetting } = require('../db');
 const { sendDealAlert, sendSnipeAlert } = require('../alerts/sms');
+const { gradeCard } = require('./condition-grader');
 
 // ── Apply buy rules to a listing ─────────────────────────────────────────────
 // Returns { isDeal, reason, maxBid } or null if no deal.
@@ -70,6 +71,37 @@ function saveDeal({ listing, fmv, discountPct, playerName }) {
   return result.lastInsertRowid;
 }
 
+// ── Run AI vision grading on a raw card deal ─────────────────────────────────
+// Returns null gracefully if grading fails or is skipped.
+async function runGraderIfRaw(db, listing, player, dealId) {
+  // Only grade raw/ungraded cards
+  const isRaw = !listing.grade || /^raw$/i.test(String(listing.grade).trim());
+  if (!isRaw) return null;
+  if (!listing.image_url) return null;
+
+  const aiGrade = await gradeCard(listing.image_url, {
+    playerName: player.name,
+    cardSet: listing.card_set,
+  });
+
+  if (!aiGrade) return null;
+
+  // Persist AI grade on the deal row
+  db.prepare(`
+    UPDATE deals
+    SET ai_grade=?, ai_confidence=?, ai_recommendation=?, ai_details=?
+    WHERE id=?
+  `).run(
+    aiGrade.estimatedGrade,
+    aiGrade.confidence,
+    aiGrade.recommendation,
+    JSON.stringify(aiGrade.details),
+    dealId,
+  );
+
+  return aiGrade;
+}
+
 // ── Process a batch of listings from the scanner ─────────────────────────────
 async function processListings(listings) {
   const db = getDb();
@@ -96,9 +128,12 @@ async function processListings(listings) {
       playerName: player.name,
     });
 
-    deals.push({ dealId, listing, player, evaluation });
+    // ── AI condition grading (raw cards only, fails gracefully) ────────────
+    const aiGrade = await runGraderIfRaw(db, listing, player, dealId);
 
-    // Trigger SMS alert based on listing type
+    deals.push({ dealId, listing, player, evaluation, aiGrade });
+
+    // ── Trigger SMS alert based on listing type ────────────────────────────
     try {
       if (listing.type === 'BIN') {
         await sendDealAlert({
@@ -109,6 +144,7 @@ async function processListings(listings) {
           fmv: evaluation.fmv,
           discountPct: evaluation.discountPct,
           source: listing.source || 'eBay',
+          aiGrade,
         });
         db.prepare('UPDATE deals SET sms_sent_at=CURRENT_TIMESTAMP, status=? WHERE id=?')
           .run('sms_pending', dealId);

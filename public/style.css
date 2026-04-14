@@ -229,6 +229,10 @@ main {
 .deal-tag.source  { background: var(--bg2); color: var(--muted); }
 .deal-tag.grade   { background: #1e1a2d; color: #b39ddb; }
 .deal-tag.ending-soon { background: #3e1c1c; color: var(--red); animation: pulse 1.5s infinite; }
+/* AI condition grade badges */
+.deal-tag.condition-grade { background: #1a2b1a; color: #56d364; border: 1px solid rgba(86,211,100,0.3); }
+.deal-tag.condition-sell  { background: #2d220e; color: #e3b341; border: 1px solid rgba(227,179,65,0.3); }
+.deal-tag.condition-pass  { background: #2d1e1e; color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
 
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
 
