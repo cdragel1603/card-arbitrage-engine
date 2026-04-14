@@ -91,7 +91,13 @@ router.post('/login', async (req, res) => {
   if (!match) return res.redirect('/auth/login?error=1');
 
   req.session.authenticated = true;
-  res.redirect('/');
+  req.session.save((err) => {
+    if (err) {
+      console.error('[Auth] Session save error:', err);
+      return res.redirect('/auth/login?error=1');
+    }
+    res.redirect('/');
+  });
 });
 
 // ── Logout ────────────────────────────────────────────────────────────────────
