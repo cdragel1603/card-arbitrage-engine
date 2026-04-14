@@ -32,7 +32,6 @@ const App = (() => {
       setText('s-active', s.activeDeals);
       setText('s-today',  s.dealsToday);
       setText('s-cards',  s.totalCards);
-      setText('s-spend',  `$${s.dailySpend.toFixed(0)} / $${s.dailyLimit.toFixed(0)}`);
       setText('s-fmv',    s.totalFmvEntries);
 
       // ── Weekly spend stat card + header indicator ────────────────────────
@@ -239,7 +238,7 @@ const App = (() => {
           <div class="name">${esc(p.name)}</div>
           <div class="sport">${esc(p.sport)}</div>
           <div class="tier" style="color:${tierColor};font-size:0.72rem">${tierLabel}</div>
-          <div style="font-size:0.7rem;color:var(--muted);margin-top:0.1rem">${p.target_count} sets · ${p.fmv_count} FMV</div>
+          <div style="font-size:0.7rem;color:var(--muted);margin-top:0.1rem">${p.target_count} sets · ${p.fmv_count} FMV${p.override_count > 0 ? ` · <span style="color:var(--gold)">$${p.min_threshold_override} override</span>` : ''}</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:0.35rem">
           <label class="toggle" title="${p.active ? 'Disable' : 'Enable'}">

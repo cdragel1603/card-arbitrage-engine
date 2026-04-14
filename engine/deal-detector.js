@@ -34,13 +34,37 @@ function classifyRarity(text) {
 
 // ── Apply buy rules to a listing ─────────────────────────────────────────────
 // Returns evaluation object or null if listing doesn't qualify.
-function evaluateListing({ listing, fmvRow, tier }) {
+// targetRow (optional) — card_targets row; may carry buy_threshold_usd override.
+function evaluateListing({ listing, fmvRow, tier, targetRow }) {
   if (!fmvRow || !fmvRow.fmv) return null;
 
   const fmv   = fmvRow.fmv;
   const price = listing.price;
 
-  // ── Guardrail 1: Per-card snipe cap ──────────────────────────────────────
+  // ── Per-card threshold override — explicit entry wins over global formula ──
+  if (targetRow?.buy_threshold_usd != null) {
+    const override = targetRow.buy_threshold_usd;
+    if (price > override) {
+      console.log(`[DealDetector] Skip (override threshold $${override}): $${price} — ${listing.description}`);
+      return null;
+    }
+    const discountPct = Math.round((1 - price / fmv) * 100);
+    console.log(`[DealDetector] Override threshold matched ($${price} ≤ $${override}): ${listing.description}`);
+    return {
+      isDeal: true,
+      fmv,
+      netFmv: null,
+      discountPct,
+      netDiscountPct: null,
+      targetPrice: override,
+      maxBid: override,
+      rarity: classifyRarity(listing.title || listing.description),
+      lowConfidenceFmv: false,
+      thresholdOverride: override,
+    };
+  }
+
+  // ── Guardrail 1: Per-card snipe cap (global, no override present) ─────────
   const maxSingleSnipe = parseFloat(getSetting('max_single_snipe_usd') || process.env.MAX_SINGLE_SNIPE_USD || '250');
   if (price > maxSingleSnipe) {
     console.log(`[DealDetector] Skip (per-card cap $${maxSingleSnipe}): $${price} — ${listing.description}`);
@@ -215,13 +239,18 @@ async function processListings(listings) {
       continue;
     }
 
+    // Look up card target row (may carry per-card buy_threshold_usd override)
+    const targetRow = db.prepare(
+      'SELECT * FROM card_targets WHERE player_id=? AND card_set=? AND active=1'
+    ).get(player.id, listing.card_set);
+
     // Look up FMV
     const fmvRow = db.prepare(`
       SELECT * FROM fmv_estimates
       WHERE player_id=? AND card_set=? AND grade=?
     `).get(player.id, listing.card_set, listing.grade || 'PSA 9');
 
-    const evaluation = evaluateListing({ listing, fmvRow, tier: player.tier });
+    const evaluation = evaluateListing({ listing, fmvRow, tier: player.tier, targetRow });
     if (!evaluation) continue;
 
     const dealId = saveDeal({

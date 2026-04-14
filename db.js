@@ -137,8 +137,18 @@ function initDb() {
     try { db.exec(`ALTER TABLE deals ADD COLUMN ${colDef}`); } catch { /* already exists */ }
   }
 
+  // ── Migrations: per-card threshold overrides on card_targets ───────────────
+  const targetCols = [
+    'buy_threshold_usd REAL',  // explicit buy price override (null = use global net-of-fees rule)
+    'search_terms TEXT',        // custom eBay search query (null = auto-build from name+set)
+  ];
+  for (const colDef of targetCols) {
+    try { db.exec(`ALTER TABLE card_targets ADD COLUMN ${colDef}`); } catch { /* already exists */ }
+  }
+
   seedDefaultSettings(db);
   seedWatchlist(db);
+  seedCustomTargets(db);
 
   console.log('[DB] Initialized successfully');
   return db;
@@ -233,6 +243,38 @@ function checkDailySpend(amount) {
 function recordSpend(amount) {
   const { spent } = checkDailySpend(0);
   setSetting('daily_spend_today', String(spent + amount));
+}
+
+// ── Custom card target entries with per-card threshold overrides ──────────────
+function seedCustomTargets(db) {
+  // Matthew Schaefer — SP Game Used Blue Auto
+  // FMV ~$500 (manual, hype-driven); buy at ≤$450 (90% FMV, tighter than global rule)
+  const schaefer = db.prepare('SELECT id FROM players WHERE name=?').get('Matthew Schaefer');
+  if (!schaefer) return;
+
+  const existing = db.prepare(
+    'SELECT id FROM card_targets WHERE player_id=? AND card_set=?'
+  ).get(schaefer.id, 'SP Game Used Blue Auto');
+
+  if (!existing) {
+    db.prepare(
+      'INSERT INTO card_targets(player_id, card_set, sport, buy_threshold_usd, search_terms) VALUES(?,?,?,?,?)'
+    ).run(
+      schaefer.id,
+      'SP Game Used Blue Auto',
+      'NHL',
+      450,
+      '"Matthew Schaefer" "SP Game Used" auto blue'
+    );
+    console.log('[DB] Seeded: Matthew Schaefer — SP Game Used Blue Auto (buy ≤ $450, FMV $500)');
+  }
+
+  // Seed manual FMV estimate so deal-detector has something to compare against
+  db.prepare(`
+    INSERT INTO fmv_estimates(player_id, player_name, card_set, grade, fmv, sample_count, last_updated, trend)
+    VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP,'stable')
+    ON CONFLICT(player_id, card_set, grade) DO NOTHING
+  `).run(schaefer.id, 'Matthew Schaefer', 'SP Game Used Blue Auto', 'RAW', 500, 3);
 }
 
 // ── Weekly rolling spend (queries transactions — no counter to reset) ─────────

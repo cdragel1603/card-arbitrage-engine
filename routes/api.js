@@ -137,7 +137,9 @@ router.get('/players', (req, res) => {
   const players = db.prepare(`
     SELECT p.*,
       COUNT(DISTINCT ct.id) as target_count,
-      COUNT(DISTINCT fe.id) as fmv_count
+      COUNT(DISTINCT fe.id) as fmv_count,
+      COUNT(DISTINCT CASE WHEN ct.buy_threshold_usd IS NOT NULL THEN ct.id END) as override_count,
+      MIN(ct.buy_threshold_usd) as min_threshold_override
     FROM players p
     LEFT JOIN card_targets ct ON ct.player_id=p.id AND ct.active=1
     LEFT JOIN fmv_estimates fe ON fe.player_id=p.id

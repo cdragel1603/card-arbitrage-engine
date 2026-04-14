@@ -240,7 +240,10 @@ async function scanForDeals() {
     for (const target of targets) {
       const grades = ['PSA 10', 'PSA 9'];
       for (const grade of grades) {
-        const query = buildSearchQuery(player.name, target.card_set, grade);
+        // Honour per-target search_terms override; otherwise build from name + set + grade
+        const query = target.search_terms
+          ? target.search_terms
+          : buildSearchQuery(player.name, target.card_set, grade);
         try {
           // Search BIN listings
           const bins = await searchBinListings(query, { limit: 10 });
