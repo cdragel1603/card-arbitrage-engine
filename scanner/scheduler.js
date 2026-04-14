@@ -3,7 +3,7 @@
 require('dotenv').config();
 const cron = require('node-cron');
 const { getDb, getSetting } = require('../db');
-const { scanForDeals, refreshComps } = require('./ebay');
+const { scanForDeals, refreshComps, validateEbayCredentials } = require('./ebay');
 const { scanPriceDrops: arenaClubScan } = require('./arena-club');
 const { scanActiveAuctions: altScan } = require('./alt');
 const { runMockScan, seedMockFmv } = require('./mock');
@@ -95,10 +95,13 @@ async function sendDailySummaryJob() {
 }
 
 // ── Start all scheduled jobs ──────────────────────────────────────────────────
-function startScheduler() {
+async function startScheduler() {
   if (MOCK_MODE) {
     console.log('[Scheduler] MOCK MODE — using generated deals (set MOCK_SCANNER=false for live scanning)');
     seedMockFmv();
+  } else {
+    console.log('[Scheduler] LIVE MODE — validating eBay credentials...');
+    await validateEbayCredentials(); // logs result; does not throw on failure
   }
 
   // Kick off rolling scan loop immediately

@@ -13,6 +13,26 @@ const BASE_URL = IS_SANDBOX
 
 let tokenCache = { token: null, expiresAt: 0 };
 
+// ── HTTP helper with 429 retry/backoff ────────────────────────────────────────
+async function retryGet(url, options, maxRetries = 3) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await axios.get(url, options);
+    } catch (err) {
+      const status = err.response?.status;
+      if (status === 429 && attempt < maxRetries) {
+        // Honour Retry-After header if present, else exponential backoff
+        const retryAfter = err.response?.headers?.['retry-after'];
+        const waitMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt) * 2000;
+        console.warn(`[eBay] Rate limited (429). Retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+        await delay(waitMs);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 // ── OAuth 2.0 client credentials ─────────────────────────────────────────────
 async function getEbayToken() {
   if (tokenCache.token && Date.now() < tokenCache.expiresAt - 60000) {
@@ -63,7 +83,7 @@ async function searchActiveListings(query, opts = {}) {
   if (opts.priceTo) params['filter'] += `,price:[..${opts.priceTo}]`;
   if (opts.priceFrom) params['filter'] += `,price:[${opts.priceFrom}..]`;
 
-  const res = await axios.get(`${BASE_URL}/buy/browse/v1/item_summary/search`, {
+  const res = await retryGet(`${BASE_URL}/buy/browse/v1/item_summary/search`, {
     headers: { Authorization: `Bearer ${token}` },
     params,
   });
@@ -94,7 +114,7 @@ async function fetchSoldComps(query, opts = {}) {
   const token = await getEbayToken();
 
   try {
-    const res = await axios.get(`${BASE_URL}/buy/marketplace_insights/v1_beta/item_sales/search`, {
+    const res = await retryGet(`${BASE_URL}/buy/marketplace_insights/v1_beta/item_sales/search`, {
       headers: { Authorization: `Bearer ${token}` },
       params: {
         q: query,
@@ -126,7 +146,7 @@ async function fetchSoldCompsFinding(query, opts = {}) {
     return [];
   }
 
-  const res = await axios.get('https://svcs.ebay.com/services/search/FindingService/v1', {
+  const res = await retryGet('https://svcs.ebay.com/services/search/FindingService/v1', {
     params: {
       'OPERATION-NAME': 'findCompletedItems',
       'SERVICE-VERSION': '1.13.0',
@@ -259,8 +279,29 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// ── Startup credential check ──────────────────────────────────────────────────
+async function validateEbayCredentials() {
+  const clientId     = process.env.EBAY_CLIENT_ID;
+  const clientSecret = process.env.EBAY_CLIENT_SECRET;
+
+  if (!clientId || clientId.startsWith('your_') || !clientSecret || clientSecret.startsWith('your_')) {
+    console.error('[eBay] EBAY_CLIENT_ID / EBAY_CLIENT_SECRET are not set. Live scanning will fail.');
+    return false;
+  }
+
+  try {
+    await getEbayToken();
+    console.log(`[eBay] Credentials validated OK (${IS_SANDBOX ? 'sandbox' : 'production'})`);
+    return true;
+  } catch (err) {
+    console.error(`[eBay] Credential validation failed: ${err.response?.data?.error_description || err.message}`);
+    return false;
+  }
+}
+
 module.exports = {
   getEbayToken,
+  validateEbayCredentials,
   searchActiveListings,
   searchBinListings,
   searchEndingSoonAuctions,
