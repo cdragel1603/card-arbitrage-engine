@@ -235,7 +235,7 @@ router.get('/settings', (req, res) => {
 router.patch('/settings', (req, res) => {
   const allowed = [
     'max_spend_per_card', 'max_spend_per_day', 'weekly_spend_cap',
-    'max_single_snipe_usd', 'min_card_price', 'min_comp_samples',
+    'max_single_snipe_usd', 'max_blue_chip_snipe_usd', 'min_card_price', 'min_comp_samples',
     'ebay_fvf_pct', 'shipping_cost_usd',
     'blue_chip_threshold', 'standard_threshold',
     'sms_enabled', 'auto_snipe_enabled', 'auto_snipe_auctions', 'scan_active',
@@ -312,9 +312,10 @@ router.get('/stats', (req, res) => {
   const totalPlayers = db.prepare(`SELECT COUNT(*) as n FROM players WHERE active=1`).get();
   const totalFmv     = db.prepare(`SELECT COUNT(*) as n FROM fmv_estimates WHERE fmv IS NOT NULL`).get();
 
-  const weeklyCap      = parseFloat(process.env.WEEKLY_SPEND_CAP_USD || getSetting('weekly_spend_cap')      || '1000');
-  const maxSingleSnipe = parseFloat(process.env.MAX_SINGLE_SNIPE_USD || getSetting('max_single_snipe_usd') || '250');
-  const autoSnipeDbVal = getSetting('auto_snipe_enabled');
+  const weeklyCap         = parseFloat(process.env.WEEKLY_SPEND_CAP_USD    || getSetting('weekly_spend_cap')         || '1000');
+  const maxSingleSnipe    = parseFloat(process.env.MAX_SINGLE_SNIPE_USD    || getSetting('max_single_snipe_usd')    || '250');
+  const maxBlueChipSnipe  = parseFloat(process.env.MAX_BLUE_CHIP_SNIPE_USD || getSetting('max_blue_chip_snipe_usd') || '500');
+  const autoSnipeDbVal    = getSetting('auto_snipe_enabled');
   const autoSnipeEnabled = autoSnipeDbVal != null
     ? autoSnipeDbVal === 'true'
     : (process.env.AUTO_SNIPE_ENABLED || 'false') === 'true';
@@ -330,6 +331,7 @@ router.get('/stats', (req, res) => {
     weeklySpend:     getWeeklySpend(),
     weeklyCap,
     maxSingleSnipe,
+    maxBlueChipSnipe,
     autoSnipeEnabled,
   });
 });

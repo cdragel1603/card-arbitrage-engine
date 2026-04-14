@@ -81,6 +81,7 @@ const CARD_TARGETS = {
     'Upper Deck Premier Rookie Patch Auto',
     'SPx Rookie Jersey Auto',
     'Upper Deck Premier Auto',
+    'Draft Day Marks',
   ],
   NFL: [
     'Kaboom',

@@ -162,6 +162,7 @@ function seedDefaultSettings(db) {
     max_spend_per_day: '5000',
     weekly_spend_cap: String(process.env.WEEKLY_SPEND_CAP_USD || '1000'),
     max_single_snipe_usd: String(process.env.MAX_SINGLE_SNIPE_USD || '250'),
+    max_blue_chip_snipe_usd: String(process.env.MAX_BLUE_CHIP_SNIPE_USD || '500'),
     min_card_price: String(THRESHOLDS.min_price),
     min_comp_samples: String(process.env.MIN_COMP_SAMPLES || '5'),
     ebay_fvf_pct: String(process.env.EBAY_FVF_PCT || '0.13'),
