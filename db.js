@@ -149,6 +149,7 @@ function seedDefaultSettings(db) {
     dashboard_password_hash: bcrypt.hashSync(process.env.DASHBOARD_PASSWORD || 'crazycardz2024', 10),
     max_spend_per_card: String(THRESHOLDS.max_price_standard),
     max_spend_per_day: '5000',
+    weekly_spend_cap: String(process.env.WEEKLY_SPEND_CAP_USD || '1000'),
     min_card_price: String(THRESHOLDS.min_price),
     blue_chip_threshold: String(THRESHOLDS.blue_chip),
     standard_threshold: String(THRESHOLDS.standard),
@@ -229,4 +230,22 @@ function recordSpend(amount) {
   setSetting('daily_spend_today', String(spent + amount));
 }
 
-module.exports = { initDb, getDb, getSetting, setSetting, checkDailySpend, recordSpend };
+// ── Weekly rolling spend (queries transactions — no counter to reset) ─────────
+
+function getWeeklySpend() {
+  const db = getDb();
+  const row = db.prepare(`
+    SELECT COALESCE(SUM(purchase_price), 0) as total
+    FROM transactions
+    WHERE purchase_date >= datetime('now', '-7 days')
+  `).get();
+  return row ? parseFloat(row.total) : 0;
+}
+
+function checkWeeklySpend(amount) {
+  const cap = parseFloat(process.env.WEEKLY_SPEND_CAP_USD || getSetting('weekly_spend_cap') || '1000');
+  const spent = getWeeklySpend();
+  return { spent, cap, canSpend: spent + amount <= cap };
+}
+
+module.exports = { initDb, getDb, getSetting, setSetting, checkDailySpend, recordSpend, getWeeklySpend, checkWeeklySpend };

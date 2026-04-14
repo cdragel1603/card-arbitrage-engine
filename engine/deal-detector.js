@@ -1,6 +1,6 @@
 'use strict';
 
-const { getDb, getSetting } = require('../db');
+const { getDb, getSetting, checkWeeklySpend } = require('../db');
 const { sendDealAlert, sendSnipeAlert } = require('../alerts/sms');
 const { gradeCard } = require('./condition-grader');
 
@@ -132,6 +132,16 @@ async function processListings(listings) {
     const aiGrade = await runGraderIfRaw(db, listing, player, dealId);
 
     deals.push({ dealId, listing, player, evaluation, aiGrade });
+
+    // ── Weekly spend cap guard — skip SMS if cap would be exceeded ────────
+    const { canSpend: weeklyOk, spent: weeklySpent, cap: weeklyCap } = checkWeeklySpend(listing.price);
+    if (!weeklyOk) {
+      console.warn(
+        `[DealDetector] Weekly spend cap hit ($${weeklySpent.toFixed(0)} / $${weeklyCap.toFixed(0)}), ` +
+        `skipping snipe: ${player.name} — ${listing.description} ($${listing.price})`
+      );
+      continue;
+    }
 
     // ── Trigger SMS alert based on listing type ────────────────────────────
     try {

@@ -11,7 +11,7 @@
 //   - Apply for "Buy APIs" access at developer.ebay.com
 
 const axios = require('axios');
-const { getDb, checkDailySpend, recordSpend } = require('../db');
+const { getDb, checkDailySpend, recordSpend, checkWeeklySpend } = require('../db');
 const { getEbayToken } = require('../scanner/ebay');
 
 // ── Place proxy bid on eBay auction ─────────────────────────────────────────
@@ -25,6 +25,12 @@ async function placeProxyBid(itemId, maxBid, { dryRun = false } = {}) {
   const { canSpend } = checkDailySpend(maxBid);
   if (!canSpend) {
     return { success: false, reason: 'Daily spend limit reached' };
+  }
+
+  const { canSpend: weeklyOk, spent: weeklySpent, cap: weeklyCap } = checkWeeklySpend(maxBid);
+  if (!weeklyOk) {
+    console.warn(`[Sniper] Weekly spend cap hit ($${weeklySpent.toFixed(0)} / $${weeklyCap.toFixed(0)}), skipping snipe`);
+    return { success: false, reason: `Weekly spend cap hit ($${weeklySpent.toFixed(0)} / $${weeklyCap.toFixed(0)})` };
   }
 
   // Phase 2 implementation — Offer API not yet approved
@@ -61,6 +67,13 @@ async function executeBinPurchase(dealId, { dryRun = false } = {}) {
   if (!canSpend) {
     db.prepare("UPDATE deals SET status='passed' WHERE id=?").run(dealId);
     return { success: false, reason: 'Daily spend limit reached' };
+  }
+
+  const { canSpend: weeklyOk, spent: weeklySpent, cap: weeklyCap } = checkWeeklySpend(deal.listing_price);
+  if (!weeklyOk) {
+    console.warn(`[Sniper] Weekly spend cap hit ($${weeklySpent.toFixed(0)} / $${weeklyCap.toFixed(0)}), skipping snipe for deal ${dealId}`);
+    db.prepare("UPDATE deals SET status='passed' WHERE id=?").run(dealId);
+    return { success: false, reason: `Weekly spend cap hit ($${weeklySpent.toFixed(0)} / $${weeklyCap.toFixed(0)})` };
   }
 
   // Phase 2: eBay Order API call goes here

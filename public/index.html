@@ -20,9 +20,18 @@
       <span id="scan-label">Loading…</span>
       <span style="color:var(--border)">|</span>
       <span id="refresh-ticker">–</span>
+      <span style="color:var(--border)">|</span>
+      <span id="weekly-spend-indicator" title="Rolling 7-day snipe spend vs cap" style="font-size:0.8rem;color:var(--muted)">$– / $– this week</span>
       <a href="/auth/logout" class="btn btn-ghost btn-sm" style="margin-left:0.5rem">Sign out</a>
     </div>
   </header>
+
+  <!-- ── Weekly cap banner (hidden until cap is hit) ─────────────────── -->
+  <div id="weekly-cap-banner" style="display:none;background:#3d1f1f;border-bottom:1px solid #7f2020;padding:0.5rem 1.25rem;font-size:0.82rem;color:#f78166;display:none;align-items:center;gap:0.5rem">
+    <strong>⚠ Weekly spend cap reached</strong>
+    <span id="weekly-cap-banner-text"></span>
+    <span style="color:var(--muted)">— SMS alerts paused until the 7-day window rolls over.</span>
+  </div>
 
   <!-- ── Nav ───────────────────────────────────────────────────────────── -->
   <nav id="nav">
@@ -56,6 +65,10 @@
       <div class="stat-card">
         <div class="label">FMV Entries</div>
         <div class="value" id="s-fmv">–</div>
+      </div>
+      <div class="stat-card" id="weekly-spend-card">
+        <div class="label">Weekly Spend</div>
+        <div class="value" id="s-weekly-spend">–</div>
       </div>
     </div>
 
@@ -270,6 +283,10 @@
             <div class="form-row">
               <label>Max Daily Spend ($)</label>
               <input type="number" id="s-max-day" min="100" step="100" />
+            </div>
+            <div class="form-row">
+              <label>Weekly Spend Cap ($)</label>
+              <input type="number" id="s-weekly-cap" min="100" step="100" />
             </div>
           </div>
           <button class="btn btn-primary" onclick="App.saveSettings()">Save Thresholds</button>

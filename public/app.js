@@ -34,6 +34,31 @@ const App = (() => {
       setText('s-cards',  s.totalCards);
       setText('s-spend',  `$${s.dailySpend.toFixed(0)} / $${s.dailyLimit.toFixed(0)}`);
       setText('s-fmv',    s.totalFmvEntries);
+
+      // ── Weekly spend stat card + header indicator ────────────────────────
+      const weeklySpend = s.weeklySpend  || 0;
+      const weeklyCap   = s.weeklyCap    || 1000;
+      const capHit      = weeklySpend >= weeklyCap;
+      const weeklyText  = `$${weeklySpend.toFixed(0)} / $${weeklyCap.toFixed(0)}`;
+
+      const weeklyEl = document.getElementById('s-weekly-spend');
+      if (weeklyEl) {
+        weeklyEl.textContent = weeklyText;
+        weeklyEl.className   = `value ${capHit ? 'td-red' : weeklySpend / weeklyCap >= 0.8 ? 'gold' : ''}`;
+      }
+
+      const headerIndicator = document.getElementById('weekly-spend-indicator');
+      if (headerIndicator) {
+        headerIndicator.textContent = `$${weeklySpend.toFixed(0)} / $${weeklyCap.toFixed(0)} this week`;
+        headerIndicator.style.color = capHit ? '#f78166' : weeklySpend / weeklyCap >= 0.8 ? 'var(--gold)' : 'var(--muted)';
+      }
+
+      const banner = document.getElementById('weekly-cap-banner');
+      if (banner) {
+        banner.style.display = capHit ? 'flex' : 'none';
+        const bannerText = document.getElementById('weekly-cap-banner-text');
+        if (bannerText) bannerText.textContent = `($${weeklySpend.toFixed(0)} / $${weeklyCap.toFixed(0)})`;
+      }
     } catch (e) { console.warn('Stats load failed:', e.message); }
   }
 
@@ -415,6 +440,7 @@ const App = (() => {
       setValue('s-min-price', s.min_card_price || 100);
       setValue('s-max-card',  s.max_spend_per_card || 2500);
       setValue('s-max-day',   s.max_spend_per_day  || 5000);
+      setValue('s-weekly-cap', s.weekly_spend_cap  || 1000);
       setChecked('t-sms',   s.sms_enabled !== 'false');
       setChecked('t-snipe', s.auto_snipe_auctions !== 'false');
       setChecked('t-scan',  s.scan_active !== 'false');
@@ -428,6 +454,7 @@ const App = (() => {
       min_card_price:      document.getElementById('s-min-price').value,
       max_spend_per_card:  document.getElementById('s-max-card').value,
       max_spend_per_day:   document.getElementById('s-max-day').value,
+      weekly_spend_cap:    document.getElementById('s-weekly-cap').value,
     };
     await api('/api/settings', { method: 'PATCH', body: settings });
     toast('Settings saved', 'success');

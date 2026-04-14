@@ -1,7 +1,7 @@
 'use strict';
 
 const express = require('express');
-const { getDb, getSetting, setSetting } = require('../db');
+const { getDb, getSetting, setSetting, getWeeklySpend } = require('../db');
 const { getPriceHistory, calcRawBreakEven } = require('../engine/pricing');
 const { gradeCard } = require('../engine/condition-grader');
 const { runScanCycle, refreshAllComps } = require('../scanner/scheduler');
@@ -232,7 +232,7 @@ router.get('/settings', (req, res) => {
 // PATCH /api/settings
 router.patch('/settings', (req, res) => {
   const allowed = [
-    'max_spend_per_card', 'max_spend_per_day', 'min_card_price',
+    'max_spend_per_card', 'max_spend_per_day', 'weekly_spend_cap', 'min_card_price',
     'blue_chip_threshold', 'standard_threshold',
     'sms_enabled', 'auto_snipe_auctions', 'scan_active',
   ];
@@ -308,6 +308,8 @@ router.get('/stats', (req, res) => {
   const totalPlayers = db.prepare(`SELECT COUNT(*) as n FROM players WHERE active=1`).get();
   const totalFmv     = db.prepare(`SELECT COUNT(*) as n FROM fmv_estimates WHERE fmv IS NOT NULL`).get();
 
+  const weeklyCap = parseFloat(process.env.WEEKLY_SPEND_CAP_USD || getSetting('weekly_spend_cap') || '1000');
+
   res.json({
     dealsToday:   dealsToday.n,
     activeDeals:  activeDeals.n,
@@ -316,6 +318,8 @@ router.get('/stats', (req, res) => {
     totalFmvEntries: totalFmv.n,
     dailySpend:   parseFloat(getSetting('daily_spend_today') || '0'),
     dailyLimit:   parseFloat(getSetting('max_spend_per_day') || '5000'),
+    weeklySpend:  getWeeklySpend(),
+    weeklyCap,
   });
 });
 
