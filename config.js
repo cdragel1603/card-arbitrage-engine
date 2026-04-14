@@ -53,9 +53,9 @@ const PLAYERS = [
   { name: 'Lamine Yamal',     sport: 'Soccer',  tier: 'standard' },
 
   // NHL standard
-  { name: 'Macklin Celebrini', sport: 'NHL',    tier: 'standard' },
+  { name: 'Macklin Celebrini', sport: 'NHL',    tier: 'blue_chip' },
   { name: 'Matthew Schaefer',  sport: 'NHL',    tier: 'standard' },
-  { name: 'Connor Bedard',     sport: 'NHL',    tier: 'standard' },
+  { name: 'Connor Bedard',     sport: 'NHL',    tier: 'blue_chip' },
   { name: 'Cale Makar',        sport: 'NHL',    tier: 'standard' },
 ];
 

@@ -187,7 +187,7 @@ function seedDefaultSettings(db) {
 function seedWatchlist(db) {
   const insertPlayer = db.prepare(`
     INSERT INTO players(name, sport, tier) VALUES(?,?,?)
-    ON CONFLICT(name) DO NOTHING
+    ON CONFLICT(name) DO UPDATE SET tier=excluded.tier, sport=excluded.sport
   `);
   const insertTarget = db.prepare(`
     INSERT INTO card_targets(player_id, card_set, sport) VALUES(?,?,?)
