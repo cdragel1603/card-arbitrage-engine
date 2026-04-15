@@ -14,16 +14,34 @@ const BASE_URL = IS_SANDBOX
 let tokenCache = { token: null, expiresAt: 0 };
 
 // ── HTTP helper with 429 retry/backoff ────────────────────────────────────────
-async function retryGet(url, options, maxRetries = 3) {
+// Reduced from 3 → 2 max retries to stop amplifying the 429 storm we observed
+// in production: every failed call was tripling the request volume against an
+// already-saturated quota. Honours the Retry-After header (seconds or HTTP-date)
+// and adds ±300ms of jitter to the exponential fallback to avoid thundering-herd
+// retries when many parallel calls all hit a 429 at the same instant.
+async function retryGet(url, options, maxRetries = 2) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await axios.get(url, options);
     } catch (err) {
       const status = err.response?.status;
       if (status === 429 && attempt < maxRetries) {
-        // Honour Retry-After header if present, else exponential backoff
         const retryAfter = err.response?.headers?.['retry-after'];
-        const waitMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt) * 2000;
+        let waitMs;
+        if (retryAfter) {
+          // Retry-After can be a delta-seconds integer OR an HTTP-date.
+          const asInt = parseInt(retryAfter, 10);
+          if (!Number.isNaN(asInt) && String(asInt) === String(retryAfter).trim()) {
+            waitMs = asInt * 1000;
+          } else {
+            const ts = Date.parse(retryAfter);
+            waitMs = Number.isNaN(ts) ? 4000 : Math.max(0, ts - Date.now());
+          }
+        } else {
+          // Exponential backoff: 2s, 4s — plus jitter to de-sync parallel callers.
+          waitMs = Math.pow(2, attempt) * 2000 + Math.floor(Math.random() * 600 - 300);
+        }
+        waitMs = Math.max(500, waitMs);
         console.warn(`[eBay] Rate limited (429). Retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxRetries})`);
         await delay(waitMs);
         continue;
@@ -273,8 +291,10 @@ async function scanForDeals() {
             }
           }
 
-          // Small delay to respect rate limits (~5000 calls/day = 1 call per ~17s)
-          await delay(200);
+          // Small delay to respect rate limits. Bumped from 200ms → 500ms (+jitter)
+          // after observing 429 storms in production. With 214 targets × 2 grades
+          // this still leaves plenty of headroom inside a 180s scan cycle.
+          await delay(500 + Math.floor(Math.random() * 200));
         } catch (err) {
           console.error(`[eBay] Scan error for "${query}":`, err.message);
         }

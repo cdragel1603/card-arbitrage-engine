@@ -11,7 +11,9 @@ const { processListings, expireStaleDeals } = require('../engine/deal-detector')
 const { sendDailySummary } = require('../alerts/sms');
 
 const MOCK_MODE = process.env.MOCK_SCANNER !== 'false';
-const SCAN_INTERVAL = parseInt(process.env.SCAN_INTERVAL_SECONDS || '45', 10);
+// Bumped from 45s → 180s default after observing eBay 429 storms in production.
+// The 429s were exhausting the per-app daily quota and starving comp refreshes.
+const SCAN_INTERVAL = parseInt(process.env.SCAN_INTERVAL_SECONDS || '180', 10);
 const COMP_REFRESH_HOURS = parseInt(process.env.COMP_REFRESH_HOURS || '8', 10);
 
 let scanTimeout = null;
@@ -66,7 +68,8 @@ async function refreshAllComps() {
     for (const target of targets) {
       for (const grade of ['PSA 10', 'PSA 9']) {
         await refreshComps(player.id, player.name, target.card_set, grade);
-        await new Promise(r => setTimeout(r, 300)); // rate limit pause
+        // Rate-limit pause: 750ms base + 0–200ms jitter to avoid bursty calls.
+        await new Promise(r => setTimeout(r, 750 + Math.floor(Math.random() * 200)));
       }
     }
   }
