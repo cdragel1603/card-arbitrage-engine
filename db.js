@@ -5,13 +5,21 @@ const path = require('path');
 const bcrypt = require('bcrypt');
 const { PLAYERS, CARD_TARGETS, THRESHOLDS } = require('./config');
 
-const DB_PATH = path.join(__dirname, 'cards.db');
+// DB_PATH override allows mounting a Railway Volume (e.g. /app/data/cards.db).
+// Falls back to a repo-local file for local dev.
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'cards.db');
 
 let db;
 
 function getDb() {
   if (!db) {
+    // Ensure the parent directory exists (matters when DB_PATH points at a
+    // freshly-mounted Railway Volume that's empty on first boot).
+    try {
+      require('fs').mkdirSync(path.dirname(DB_PATH), { recursive: true });
+    } catch { /* best effort */ }
     db = new Database(DB_PATH);
+    console.log(`[DB] Opened ${DB_PATH}`);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     db.pragma('cache_size = -32000'); // 32MB cache
