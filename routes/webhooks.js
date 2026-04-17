@@ -40,11 +40,11 @@ router.post('/sms', express.urlencoded({ extended: false }), async (req, res) =>
     } else if (body.toUpperCase() === 'HELP') {
       await send('[CrazyCardzCo] Commands: YES (confirm purchase), STOP (cancel snipe), PASS (skip deal), STATUS (scanner status)');
     } else if (body.toUpperCase() === 'STATUS') {
-      const { getSetting } = require('../db');
+      const { getSetting, getWeeklySpend } = require('../db');
       const active = getSetting('scan_active') !== 'false';
-      const spent = parseFloat(getSetting('daily_spend_today') || '0');
-      const limit = parseFloat(getSetting('max_spend_per_day') || '5000');
-      await send(`[CrazyCardzCo] Scanner: ${active ? 'ON' : 'OFF'} | Today spent: $${spent.toFixed(0)} / $${limit.toFixed(0)}`);
+      const weeklySpent = getWeeklySpend();
+      const weeklyCap = parseFloat(getSetting('weekly_spend_cap') || '1000');
+      await send(`[CrazyCardzCo] Scanner: ${active ? 'ON' : 'OFF'} | Week spent: $${weeklySpent.toFixed(0)} / $${weeklyCap.toFixed(0)}`);
     }
   } catch (err) {
     console.error('[Webhook] SMS processing error:', err.message);

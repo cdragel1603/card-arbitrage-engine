@@ -167,7 +167,6 @@ function seedDefaultSettings(db) {
   const defaults = {
     dashboard_password_hash: bcrypt.hashSync(process.env.DASHBOARD_PASSWORD || 'crazycardz2024', 10),
     max_spend_per_card: String(THRESHOLDS.max_price_standard),
-    max_spend_per_day: '5000',
     weekly_spend_cap: String(process.env.WEEKLY_SPEND_CAP_USD || '1000'),
     max_single_snipe_usd: String(process.env.MAX_SINGLE_SNIPE_USD || '250'),
     max_blue_chip_snipe_usd: String(process.env.MAX_BLUE_CHIP_SNIPE_USD || '500'),

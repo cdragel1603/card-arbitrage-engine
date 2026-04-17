@@ -234,7 +234,7 @@ router.get('/settings', (req, res) => {
 // PATCH /api/settings
 router.patch('/settings', (req, res) => {
   const allowed = [
-    'max_spend_per_card', 'max_spend_per_day', 'weekly_spend_cap',
+    'max_spend_per_card', 'weekly_spend_cap',
     'max_single_snipe_usd', 'max_blue_chip_snipe_usd', 'min_card_price', 'min_comp_samples',
     'ebay_fvf_pct', 'shipping_cost_usd',
     'blue_chip_threshold', 'standard_threshold',
@@ -326,8 +326,6 @@ router.get('/stats', (req, res) => {
     totalCards:      totalCards.n,
     totalPlayers:    totalPlayers.n,
     totalFmvEntries: totalFmv.n,
-    dailySpend:      parseFloat(getSetting('daily_spend_today') || '0'),
-    dailyLimit:      parseFloat(getSetting('max_spend_per_day') || '5000'),
     weeklySpend:     getWeeklySpend(),
     weeklyCap,
     maxSingleSnipe,

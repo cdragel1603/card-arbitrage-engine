@@ -451,7 +451,6 @@ const App = (() => {
       setValue('s-standard',  Math.round(parseFloat(s.standard_threshold  || 0.80) * 100));
       setValue('s-min-price', s.min_card_price || 100);
       setValue('s-max-card',  s.max_spend_per_card || 2500);
-      setValue('s-max-day',   s.max_spend_per_day  || 5000);
       setValue('s-weekly-cap', s.weekly_spend_cap  || 1000);
       setValue('s-max-snipe',      s.max_single_snipe_usd    || 250);
       setValue('s-max-blue-snipe', s.max_blue_chip_snipe_usd || 500);
@@ -471,7 +470,6 @@ const App = (() => {
       standard_threshold:  (parseFloat(document.getElementById('s-standard').value) / 100).toString(),
       min_card_price:      document.getElementById('s-min-price').value,
       max_spend_per_card:  document.getElementById('s-max-card').value,
-      max_spend_per_day:   document.getElementById('s-max-day').value,
       weekly_spend_cap:    document.getElementById('s-weekly-cap').value,
       max_single_snipe_usd:     document.getElementById('s-max-snipe').value,
       max_blue_chip_snipe_usd:  document.getElementById('s-max-blue-snipe').value,
