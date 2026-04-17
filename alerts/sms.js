@@ -103,9 +103,45 @@ async function sendDailySummary({ dealsFound, dealsCount, purchased }) {
   return send(lines.join('\n'));
 }
 
+// ── Urgent deal reminder (no response after URGENT_REMINDER_MINUTES) ─────────
+async function sendUrgentReminder({
+  dealId, playerName, cardDescription, price, fmv, discountPct, hoursLeft,
+}) {
+  const timeStr = hoursLeft != null
+    ? (hoursLeft < 1
+        ? `${Math.round(hoursLeft * 60)} min`
+        : `${hoursLeft.toFixed(1)} hrs`)
+    : 'soon';
+
+  const body =
+    `⏰ REMINDER [DEAL #${dealId}] ${playerName} — ${cardDescription}\n` +
+    `$${price.toFixed(0)} (${discountPct}% below FMV $${fmv.toFixed(0)}) — ending in ${timeStr}.\n` +
+    `Reply YES to snipe or PASS to skip.`;
+  return send(body);
+}
+
+// ── Last-chance alert (<30 min remaining, tier escalation trigger) ────────────
+async function sendLastChanceAlert({
+  dealId, playerName, cardDescription, price, fmv, discountPct, minsLeft,
+}) {
+  const body =
+    `🚨 LAST CHANCE [DEAL #${dealId}] ${playerName} — ${cardDescription}\n` +
+    `Ending in ${minsLeft} min — $${price.toFixed(0)} (${discountPct}% below FMV $${fmv.toFixed(0)}).\n` +
+    `Reply YES NOW to snipe or PASS to skip.`;
+  return send(body);
+}
+
 // ── Test SMS ─────────────────────────────────────────────────────────────────
 async function sendTestSms() {
   return send('[CrazyCardzCo] Card Arbitrage Engine is online and monitoring. 🃏');
 }
 
-module.exports = { send, sendDealAlert, sendSnipeAlert, sendDailySummary, sendTestSms };
+module.exports = {
+  send,
+  sendDealAlert,
+  sendSnipeAlert,
+  sendUrgentReminder,
+  sendLastChanceAlert,
+  sendDailySummary,
+  sendTestSms,
+};

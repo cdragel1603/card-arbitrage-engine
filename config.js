@@ -151,4 +151,24 @@ const SCAN_PRIORITY = {
   ],
 };
 
-module.exports = { THRESHOLDS, PLAYERS, CARD_TARGETS, SPORT_ORDER, GRADES, SCAN_PRIORITY };
+// ── Urgent deal watcher ───────────────────────────────────────────────────────
+// Tiered recheck intervals based on time remaining:
+//   SLOW  (2–8h left)  : URGENT_SLOW_INTERVAL_SEC   default 600  (10 min)
+//   MEDIUM (30min–2h)  : URGENT_MEDIUM_INTERVAL_SEC default 300  (5 min)
+//   FAST   (<30 min)   : URGENT_FAST_INTERVAL_SEC   default 60   (60 sec — near real-time)
+//   > 8 hours left     : not pinned, normal rotation handles it
+//
+// URGENT_DEAL_WINDOW_HOURS  — pin anything ending within N hours (default 8)
+// URGENT_REMINDER_MINUTES   — resend SMS if no YES/PASS reply after N minutes (default 60)
+const URGENT_DEAL_WINDOW_HOURS  = parseFloat(process.env.URGENT_DEAL_WINDOW_HOURS      || '8');
+const URGENT_SLOW_INTERVAL_SEC  = parseInt(process.env.URGENT_SLOW_INTERVAL_SEC   || '600', 10);
+const URGENT_MEDIUM_INTERVAL_SEC = parseInt(process.env.URGENT_MEDIUM_INTERVAL_SEC || '300', 10);
+const URGENT_FAST_INTERVAL_SEC  = parseInt(process.env.URGENT_FAST_INTERVAL_SEC   || '60',  10);
+const URGENT_REMINDER_MINUTES   = parseInt(process.env.URGENT_REMINDER_MINUTES    || '60',  10);
+
+module.exports = {
+  THRESHOLDS, PLAYERS, CARD_TARGETS, SPORT_ORDER, GRADES, SCAN_PRIORITY,
+  URGENT_DEAL_WINDOW_HOURS,
+  URGENT_SLOW_INTERVAL_SEC, URGENT_MEDIUM_INTERVAL_SEC, URGENT_FAST_INTERVAL_SEC,
+  URGENT_REMINDER_MINUTES,
+};

@@ -9,6 +9,7 @@ const { scanActiveAuctions: altScan } = require('./alt');
 const { runMockScan, seedMockFmv } = require('./mock');
 const { processListings, expireStaleDeals } = require('../engine/deal-detector');
 const { sendDailySummary } = require('../alerts/sms');
+const { startUrgentWatcher } = require('./urgent-watcher');
 
 const MOCK_MODE = process.env.MOCK_SCANNER !== 'false';
 // 300s default: gives the rate limiter (4 req/min, 3s floor) time to space out
@@ -119,6 +120,9 @@ async function startScheduler() {
   // Kick off rolling scan loop immediately
   runScanCycle();
   console.log(`[Scheduler] Deal scan running every ${SCAN_INTERVAL}s`);
+
+  // Urgent deal watcher — tiered fast-recheck for listings ending soon
+  startUrgentWatcher();
 
   // Comp refresh: 3x daily at 6am, 2pm, 10pm
   cron.schedule('0 6,14,22 * * *', refreshAllComps);

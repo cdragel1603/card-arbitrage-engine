@@ -375,6 +375,29 @@ async function scanForDeals({ maxSearches = 15, cursor = 0 } = {}) {
   return { listings, nextCursor };
 }
 
+// ── Browse API: fetch single item by ID ──────────────────────────────────────
+// Used by urgent-watcher to cheaply recheck a pinned listing (1 call/item).
+// Returns a normalized item or null if the listing is no longer active (404).
+// Item IDs from Browse API search results are numeric strings; the getItem
+// endpoint expects them encoded as v1|{id}|0.
+async function fetchItemById(itemId) {
+  const token = await getEbayToken();
+
+  // Encode to Browse API format if it isn't already
+  const browserId = /^v1\|/.test(String(itemId)) ? itemId : `v1|${itemId}|0`;
+
+  try {
+    const res = await retryGet(
+      `${BASE_URL}/buy/browse/v1/item/${encodeURIComponent(browserId)}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return normalizeItem(res.data);
+  } catch (err) {
+    if (err.response?.status === 404) return null; // sold / ended
+    throw err;
+  }
+}
+
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -406,6 +429,7 @@ module.exports = {
   searchBinListings,
   searchEndingSoonAuctions,
   fetchSoldComps,
+  fetchItemById,
   refreshComps,
   scanForDeals,
   buildSearchQuery,

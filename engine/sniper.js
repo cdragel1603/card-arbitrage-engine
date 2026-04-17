@@ -13,6 +13,7 @@
 const axios = require('axios');
 const { getDb, getSetting, checkDailySpend, recordSpend, checkWeeklySpend } = require('../db');
 const { getEbayToken } = require('../scanner/ebay');
+const { removeDeal } = require('../scanner/urgent-watcher');
 
 // ── Guardrail 5: Auto-snipe gate ─────────────────────────────────────────────
 function isAutoSnipeEnabled() {
@@ -159,11 +160,13 @@ async function handleSmsReply(body, fromNumber) {
 
   if (reply === 'YES') {
     const result = await executeBinPurchase(pendingDeal.id);
+    removeDeal(pendingDeal.id); // drop from urgent watch list immediately
     return { handled: true, action: 'purchase', result };
   }
 
-  if (reply === 'STOP' || reply === 'NO') {
+  if (reply === 'STOP' || reply === 'NO' || reply === 'PASS') {
     db.prepare("UPDATE deals SET status='passed' WHERE id=?").run(pendingDeal.id);
+    removeDeal(pendingDeal.id); // drop from urgent watch list immediately
     return { handled: true, action: 'pass', dealId: pendingDeal.id };
   }
 

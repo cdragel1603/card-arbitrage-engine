@@ -3,6 +3,8 @@
 const { getDb, getSetting, checkWeeklySpend } = require('../db');
 const { sendDealAlert, sendSnipeAlert } = require('../alerts/sms');
 const { gradeCard } = require('./condition-grader');
+const urgentWatcher = require('../scanner/urgent-watcher');
+const { URGENT_DEAL_WINDOW_HOURS } = require('../config');
 
 // ── Rarity classifier ─────────────────────────────────────────────────────────
 // Detects serial-numbered and 1/1 cards from listing title/description.
@@ -281,6 +283,7 @@ async function processListings(listings) {
     }
 
     // ── Trigger SMS alert based on listing type ────────────────────────────
+    let smsSent = false;
     try {
       if (listing.type === 'BIN') {
         await sendDealAlert({
@@ -299,6 +302,7 @@ async function processListings(listings) {
         });
         db.prepare('UPDATE deals SET sms_sent_at=CURRENT_TIMESTAMP, status=? WHERE id=?')
           .run('sms_pending', dealId);
+        smsSent = true;
       } else if (listing.type === 'auction' && listing.auction_end_time) {
         const minsLeft = (new Date(listing.auction_end_time) - Date.now()) / 60000;
         if (minsLeft <= 15) {
@@ -316,10 +320,33 @@ async function processListings(listings) {
           });
           db.prepare('UPDATE deals SET sms_sent_at=CURRENT_TIMESTAMP, status=? WHERE id=?')
             .run('sms_pending', dealId);
+          smsSent = true;
         }
       }
     } catch (err) {
       console.error('[DealDetector] SMS error:', err.message);
+    }
+
+    // ── Urgent deal pinning ────────────────────────────────────────────────
+    // Pin any deal with an end time within URGENT_DEAL_WINDOW_HOURS for
+    // accelerated tiered rechecking (60s / 5 min / 10 min based on time left).
+    if (listing.auction_end_time && listing.listing_id) {
+      const endTime  = new Date(listing.auction_end_time);
+      const hoursLeft = (endTime - Date.now()) / 3_600_000;
+      if (hoursLeft > 0 && hoursLeft <= URGENT_DEAL_WINDOW_HOURS) {
+        urgentWatcher.pinDeal({
+          dealId,
+          listingId:       listing.listing_id,
+          playerName:      player.name,
+          cardDescription: listing.description,
+          price:           listing.price,
+          fmv:             evaluation.fmv,
+          discountPct:     evaluation.discountPct,
+          endTime,
+          listingType:     listing.type,
+          initialSmsSent:  smsSent,
+        });
+      }
     }
   }
 
