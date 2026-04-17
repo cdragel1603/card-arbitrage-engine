@@ -68,6 +68,18 @@ app.use((err, req, res, _next) => {
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 async function start() {
+  // Refuse to start in production with default/insecure credentials
+  if (process.env.NODE_ENV === 'production') {
+    if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET === 'dev-secret-change-in-prod') {
+      console.error('[Fatal] SESSION_SECRET must be set to a secure random value in production.');
+      process.exit(1);
+    }
+    if (!process.env.DASHBOARD_PASSWORD || process.env.DASHBOARD_PASSWORD === 'crazycardz2024') {
+      console.error('[Fatal] DASHBOARD_PASSWORD must be changed from the default value in production.');
+      process.exit(1);
+    }
+  }
+
   // Init database (creates tables + seeds watchlist)
   initDb();
 
