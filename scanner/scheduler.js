@@ -10,6 +10,7 @@ const { runMockScan, seedMockFmv } = require('./mock');
 const { processListings, expireStaleDeals } = require('../engine/deal-detector');
 const { sendDailySummary } = require('../alerts/sms');
 const { startUrgentWatcher } = require('./urgent-watcher');
+const { SCAN_PRIORITY } = require('../config');
 
 const MOCK_MODE = process.env.MOCK_SCANNER !== 'false';
 // 300s default: gives the rate limiter (4 req/min, 3s floor) time to space out
@@ -20,6 +21,9 @@ const COMP_REFRESH_HOURS = parseInt(process.env.COMP_REFRESH_HOURS || '8', 10);
 // auctions). At 4 req/min with a 3s floor, 15 queries ≈ 90s of actual work —
 // comfortably within the 300s cycle window and ≈ 2,160 calls/day (43% of quota).
 const SCAN_BATCH_SIZE = parseInt(process.env.SCAN_BATCH_SIZE || '15', 10);
+// Tier 1 comp refresh: default 60 min, tunable via TIER1_COMP_REFRESH_INTERVAL_MINUTES
+const TIER1_REFRESH_INTERVAL_MS =
+  parseInt(process.env.TIER1_COMP_REFRESH_INTERVAL_MINUTES || '60', 10) * 60 * 1000;
 
 let scanTimeout = null;
 let scanCursor  = 0; // rotates through all (player × target × grade) triples
@@ -59,7 +63,7 @@ async function runScanCycle() {
   scanTimeout = setTimeout(runScanCycle, SCAN_INTERVAL * 1000);
 }
 
-// ── Comp refresh (3x daily) ───────────────────────────────────────────────────
+// ── Comp refresh (3x daily — all tiers) ──────────────────────────────────────
 async function refreshAllComps() {
   if (MOCK_MODE) {
     console.log('[Scheduler] Mock mode — skipping live comp refresh');
@@ -84,6 +88,36 @@ async function refreshAllComps() {
     }
   }
   console.log('[Scheduler] Comp refresh complete');
+}
+
+// ── Tier 1 comp refresh (hourly) ─────────────────────────────────────────────
+async function refreshTier1Comps() {
+  if (MOCK_MODE) {
+    console.log('[Scheduler] Mock mode — skipping Tier 1 comp refresh');
+    return;
+  }
+
+  const tier1Names = new Set(SCAN_PRIORITY.tier1);
+  console.log(`[Scheduler] Hourly Tier 1 comp refresh — ${tier1Names.size} players`);
+
+  const db = getDb();
+  const players = db.prepare('SELECT * FROM players WHERE active=1')
+    .all()
+    .filter(p => tier1Names.has(p.name));
+
+  for (const player of players) {
+    const targets = db.prepare(
+      'SELECT * FROM card_targets WHERE player_id=? AND active=1'
+    ).all(player.id);
+
+    for (const target of targets) {
+      for (const grade of ['PSA 10', 'PSA 9']) {
+        await refreshComps(player.id, player.name, target.card_set, grade);
+        // acquireRateLimit() inside retryGet already enforces 3s+ between calls
+      }
+    }
+  }
+  console.log('[Scheduler] Tier 1 comp refresh complete');
 }
 
 // ── Daily summary SMS ─────────────────────────────────────────────────────────
@@ -124,9 +158,14 @@ async function startScheduler() {
   // Urgent deal watcher — tiered fast-recheck for listings ending soon
   startUrgentWatcher();
 
-  // Comp refresh: 3x daily at 6am, 2pm, 10pm
+  // Comp refresh: 3x daily at 6am, 2pm, 10pm (all tiers)
   cron.schedule('0 6,14,22 * * *', refreshAllComps);
   console.log(`[Scheduler] Comp refresh scheduled 3x daily (6am, 2pm, 10pm)`);
+
+  // Tier 1 comp refresh: hourly (tunable via TIER1_COMP_REFRESH_INTERVAL_MINUTES)
+  setInterval(refreshTier1Comps, TIER1_REFRESH_INTERVAL_MS);
+  const tier1Mins = TIER1_REFRESH_INTERVAL_MS / 60000;
+  console.log(`[Scheduler] Tier 1 comp refresh every ${tier1Mins}m (${SCAN_PRIORITY.tier1.length} players: ${SCAN_PRIORITY.tier1.join(', ')})`);
 
   // Daily summary SMS at 9pm
   cron.schedule('0 21 * * *', sendDailySummaryJob);
