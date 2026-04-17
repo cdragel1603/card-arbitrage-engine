@@ -23,6 +23,7 @@ const PLAYERS = [
   { name: 'Victor Wembanyama',sport: 'NBA',     tier: 'blue_chip' },
   { name: 'Cooper Flagg',     sport: 'NBA',     tier: 'blue_chip' },
   { name: 'Patrick Mahomes',  sport: 'NFL',     tier: 'blue_chip' },
+  { name: 'Tom Brady',        sport: 'NFL',     tier: 'blue_chip' },
   { name: 'Connor McDavid',   sport: 'NHL',     tier: 'blue_chip' },
 
   // NFL standard
@@ -55,10 +56,10 @@ const PLAYERS = [
   // NHL blue chip
   { name: 'Macklin Celebrini', sport: 'NHL',    tier: 'blue_chip' },
   { name: 'Connor Bedard',     sport: 'NHL',    tier: 'blue_chip' },
+  { name: 'Matthew Schaefer',  sport: 'NHL',    tier: 'blue_chip' },
+  { name: 'Cale Makar',        sport: 'NHL',    tier: 'blue_chip' },
 
   // NHL standard
-  { name: 'Matthew Schaefer',  sport: 'NHL',    tier: 'standard' },
-  { name: 'Cale Makar',        sport: 'NHL',    tier: 'standard' },
   { name: 'Auston Matthews',   sport: 'NHL',    tier: 'standard' },
   { name: 'Nathan MacKinnon',  sport: 'NHL',    tier: 'standard' },
   { name: 'Leon Draisaitl',    sport: 'NHL',    tier: 'standard' },
@@ -133,4 +134,20 @@ const SPORT_ORDER = ['NFL', 'NBA', 'MLB', 'Soccer', 'NHL', 'Pokemon'];
 // ── Grades we track ──────────────────────────────────────────────────────────
 const GRADES = ['PSA 10', 'PSA 9', 'PSA 8', 'BGS 9.5', 'BGS 9', 'SGC 10', 'SGC 9', 'RAW'];
 
-module.exports = { THRESHOLDS, PLAYERS, CARD_TARGETS, SPORT_ORDER, GRADES };
+// ── Scan priority tiers ───────────────────────────────────────────────────────
+// Tier 1: scanned 3x per rotation cycle
+// Tier 2: scanned 2x per rotation cycle
+// Tier 3 (everyone else): scanned 1x (normal)
+const SCAN_PRIORITY = {
+  tier1: [
+    'Patrick Mahomes', 'Victor Wembanyama', 'LeBron James', 'Shohei Ohtani',
+    'Michael Jordan', 'Tom Brady', 'Connor McDavid', 'Macklin Celebrini',
+  ],
+  tier2: [
+    'Josh Allen', 'Lamar Jackson', 'Caleb Williams', 'Stephen Curry',
+    'Luka Doncic', 'Anthony Edwards', 'Cooper Flagg', 'Aaron Judge',
+    'Connor Bedard', 'Cale Makar', 'Matthew Schaefer',
+  ],
+};
+
+module.exports = { THRESHOLDS, PLAYERS, CARD_TARGETS, SPORT_ORDER, GRADES, SCAN_PRIORITY };

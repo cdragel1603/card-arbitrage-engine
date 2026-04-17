@@ -4,7 +4,7 @@ require('dotenv').config();
 const axios = require('axios');
 const { getDb } = require('../db');
 const { upsertFmv } = require('../engine/pricing');
-const { PLAYERS, CARD_TARGETS } = require('../config');
+const { PLAYERS, CARD_TARGETS, SCAN_PRIORITY } = require('../config');
 
 const IS_SANDBOX = process.env.EBAY_ENVIRONMENT === 'sandbox';
 const BASE_URL = IS_SANDBOX
@@ -256,6 +256,14 @@ function normalizeItem(item) {
   };
 }
 
+// ── Scan priority weight for a player ────────────────────────────────────────
+// Tier 1 players appear 3x in the job list; tier 2 appear 2x; everyone else 1x.
+function getPlayerWeight(playerName) {
+  if (SCAN_PRIORITY.tier1.includes(playerName)) return 3;
+  if (SCAN_PRIORITY.tier2.includes(playerName)) return 2;
+  return 1;
+}
+
 // ── Build search query for a player + card type ──────────────────────────────
 function buildSearchQuery(playerName, cardSet, grade) {
   const parts = [playerName, cardSet];
@@ -297,15 +305,20 @@ async function scanForDeals({ maxSearches = 15, cursor = 0 } = {}) {
   const db = getDb();
   const players = db.prepare('SELECT * FROM players WHERE active=1').all();
 
-  // Build deterministic job list so the cursor is stable across cycles
+  // Build deterministic weighted job list so the cursor is stable across cycles.
+  // Tier 1 players are pushed 3x, tier 2 players 2x, everyone else 1x — so
+  // high-priority targets get scanned proportionally more often per rotation.
   const searchJobs = [];
   for (const player of players) {
     const targets = db.prepare(
       'SELECT * FROM card_targets WHERE player_id=? AND active=1'
     ).all(player.id);
+    const weight = getPlayerWeight(player.name);
     for (const target of targets) {
       for (const grade of ['PSA 10', 'PSA 9']) {
-        searchJobs.push({ player, target, grade });
+        for (let w = 0; w < weight; w++) {
+          searchJobs.push({ player, target, grade });
+        }
       }
     }
   }
