@@ -58,10 +58,10 @@ const PLAYERS = [
   { name: 'Connor Bedard',     sport: 'NHL',    tier: 'blue_chip' },
   { name: 'Matthew Schaefer',  sport: 'NHL',    tier: 'blue_chip' },
   { name: 'Cale Makar',        sport: 'NHL',    tier: 'blue_chip' },
+  { name: 'Nathan MacKinnon',  sport: 'NHL',    tier: 'blue_chip' },
 
   // NHL standard
   { name: 'Auston Matthews',   sport: 'NHL',    tier: 'standard' },
-  { name: 'Nathan MacKinnon',  sport: 'NHL',    tier: 'standard' },
   { name: 'Leon Draisaitl',    sport: 'NHL',    tier: 'standard' },
   { name: 'Kirill Kaprizov',   sport: 'NHL',    tier: 'standard' },
   { name: 'Sidney Crosby',     sport: 'NHL',    tier: 'standard' },
@@ -142,6 +142,7 @@ const SCAN_PRIORITY = {
   tier1: [
     'Patrick Mahomes', 'Victor Wembanyama', 'LeBron James', 'Shohei Ohtani',
     'Michael Jordan', 'Tom Brady', 'Connor McDavid', 'Macklin Celebrini',
+    'Nathan MacKinnon',
   ],
   tier2: [
     'Josh Allen', 'Lamar Jackson', 'Caleb Williams', 'Stephen Curry',
