@@ -26,12 +26,15 @@ const PLAYERS = [
   { name: 'Tom Brady',        sport: 'NFL',     tier: 'blue_chip' },
   { name: 'Connor McDavid',   sport: 'NHL',     tier: 'blue_chip' },
 
+  // NFL blue chip
+  { name: 'Caleb Williams',   sport: 'NFL',     tier: 'blue_chip' },
+  { name: 'Bo Nix',           sport: 'NFL',     tier: 'blue_chip' },
+  { name: 'Jayden Daniels',   sport: 'NFL',     tier: 'blue_chip' },
+
   // NFL standard
-  { name: 'Caleb Williams',   sport: 'NFL',     tier: 'standard' },
   { name: 'Jaxson Dart',      sport: 'NFL',     tier: 'standard' },
   { name: 'Josh Allen',       sport: 'NFL',     tier: 'standard' },
   { name: 'Lamar Jackson',    sport: 'NFL',     tier: 'standard' },
-  { name: 'Jayden Daniels',   sport: 'NFL',     tier: 'standard' },
   { name: 'Drake Maye',       sport: 'NFL',     tier: 'standard' },
 
   // NBA standard
@@ -87,9 +90,13 @@ const CARD_TARGETS = {
   NFL: [
     'Kaboom',
     'Downtown',
+    'Prizm base',
     'Prizm Silver',
     'Prizm Gold',
     'Prizm Black',
+    'Optic base',
+    'Optic Holo',
+    'Donruss Rated Rookie',
     'National Treasures RPA',
     'Flawless RPA',
     'Immaculate',
@@ -142,11 +149,11 @@ const SCAN_PRIORITY = {
   tier1: [
     'Patrick Mahomes', 'Victor Wembanyama', 'LeBron James', 'Shohei Ohtani',
     'Michael Jordan', 'Tom Brady', 'Connor McDavid', 'Macklin Celebrini',
-    'Nathan MacKinnon',
+    'Nathan MacKinnon', 'Caleb Williams', 'Cooper Flagg', 'Bo Nix', 'Jayden Daniels',
   ],
   tier2: [
-    'Josh Allen', 'Lamar Jackson', 'Caleb Williams', 'Stephen Curry',
-    'Luka Doncic', 'Anthony Edwards', 'Cooper Flagg', 'Aaron Judge',
+    'Josh Allen', 'Lamar Jackson', 'Stephen Curry',
+    'Luka Doncic', 'Anthony Edwards', 'Aaron Judge',
     'Connor Bedard', 'Cale Makar', 'Matthew Schaefer',
   ],
 };
