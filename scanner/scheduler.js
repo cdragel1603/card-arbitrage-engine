@@ -11,12 +11,17 @@ const { processListings, expireStaleDeals } = require('../engine/deal-detector')
 const { sendDailySummary } = require('../alerts/sms');
 
 const MOCK_MODE = process.env.MOCK_SCANNER !== 'false';
-// Bumped from 45s → 180s default after observing eBay 429 storms in production.
-// The 429s were exhausting the per-app daily quota and starving comp refreshes.
-const SCAN_INTERVAL = parseInt(process.env.SCAN_INTERVAL_SECONDS || '180', 10);
+// 300s default: gives the rate limiter (4 req/min, 3s floor) time to space out
+// 15 searches × 2 calls each = 30 calls before the next cycle begins.
+const SCAN_INTERVAL = parseInt(process.env.SCAN_INTERVAL_SECONDS || '300', 10);
 const COMP_REFRESH_HOURS = parseInt(process.env.COMP_REFRESH_HOURS || '8', 10);
+// Number of search queries per scan cycle. Each query costs 2 API calls (BIN +
+// auctions). At 4 req/min with a 3s floor, 15 queries ≈ 90s of actual work —
+// comfortably within the 300s cycle window and ≈ 2,160 calls/day (43% of quota).
+const SCAN_BATCH_SIZE = parseInt(process.env.SCAN_BATCH_SIZE || '15', 10);
 
 let scanTimeout = null;
+let scanCursor  = 0; // rotates through all (player × target × grade) triples
 
 // ── Main scan loop ────────────────────────────────────────────────────────────
 async function runScanCycle() {
@@ -30,8 +35,12 @@ async function runScanCycle() {
     if (MOCK_MODE) {
       await runMockScan();
     } else {
-      // Real eBay scan
-      const listings = await scanForDeals();
+      // Real eBay scan — advance cursor so each cycle covers a fresh slice of targets
+      const { listings, nextCursor } = await scanForDeals({
+        maxSearches: SCAN_BATCH_SIZE,
+        cursor: scanCursor,
+      });
+      scanCursor = nextCursor;
       if (listings.length > 0) {
         await processListings(listings);
       }
@@ -68,8 +77,8 @@ async function refreshAllComps() {
     for (const target of targets) {
       for (const grade of ['PSA 10', 'PSA 9']) {
         await refreshComps(player.id, player.name, target.card_set, grade);
-        // Rate-limit pause: 750ms base + 0–200ms jitter to avoid bursty calls.
-        await new Promise(r => setTimeout(r, 750 + Math.floor(Math.random() * 200)));
+        // acquireRateLimit() inside retryGet already enforces 3s+ between calls;
+        // no extra sleep needed here.
       }
     }
   }
