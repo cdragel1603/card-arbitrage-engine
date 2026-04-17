@@ -288,6 +288,12 @@ router.post('/grade-card', async (req, res) => {
   if (!imageUrl) return res.status(400).json({ error: 'imageUrl required' });
 
   const result = await gradeCard(imageUrl, { playerName, cardSet });
+  if (result === null) {
+    return res.status(503).json({
+      error: 'Grading unavailable',
+      reason: 'Check OPENAI_API_KEY is set and review server logs for details',
+    });
+  }
   res.json(result);
 });
 

@@ -1,10 +1,19 @@
 'use strict';
 
 const express = require('express');
+const twilio = require('twilio');
 const { handleSmsReply } = require('../engine/sniper');
 const { send } = require('../alerts/sms');
 
 const router = express.Router();
+
+// Validates X-Twilio-Signature when credentials are configured.
+// Skipped transparently in dev or when TWILIO_AUTH_TOKEN is still a placeholder.
+function validateTwilioSignature(req, res, next) {
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  if (!authToken || authToken.startsWith('your_')) return next();
+  twilio.webhook(authToken)(req, res, next);
+}
 
 // ── Twilio SMS webhook ────────────────────────────────────────────────────────
 // Configure your Twilio number's "When A Message Comes In" webhook to:
@@ -15,7 +24,10 @@ const router = express.Router();
 //   From: sender phone number
 //   To: your Twilio number
 
-router.post('/sms', express.urlencoded({ extended: false }), async (req, res) => {
+router.post('/sms',
+  express.urlencoded({ extended: false }),
+  validateTwilioSignature,
+  async (req, res) => {
   const body = (req.body.Body || '').trim();
   const from = req.body.From || '';
 

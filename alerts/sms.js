@@ -14,8 +14,8 @@ function getClient() {
   return twilio(sid, token);
 }
 
-const FROM = process.env.TWILIO_FROM_NUMBER || '+16026339330';
-const TO   = process.env.TWILIO_TO_NUMBER   || '+17088376553';
+const FROM = process.env.TWILIO_FROM_NUMBER;
+const TO   = process.env.TWILIO_TO_NUMBER;
 
 async function send(body) {
   const smsEnabled = getSetting('sms_enabled');
@@ -28,6 +28,11 @@ async function send(body) {
   if (!client) {
     console.log(`[SMS] No credentials — would send: ${body}`);
     return { sent: false, reason: 'Twilio credentials not configured' };
+  }
+
+  if (!FROM || !TO) {
+    console.log(`[SMS] Phone numbers not configured — would send: ${body}`);
+    return { sent: false, reason: 'TWILIO_FROM_NUMBER / TWILIO_TO_NUMBER not configured' };
   }
 
   try {
