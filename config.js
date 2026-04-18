@@ -2,9 +2,11 @@
 
 // ── Buy thresholds ──────────────────────────────────────────────────────────
 const THRESHOLDS = {
-  blue_chip: 0.95,        // buy at ≤95% of FMV
-  standard: 0.80,         // buy at ≤80% of FMV
-  raw_psa10_ratio: 3.0,   // raw card: PSA 10 value must be 3x+ purchase price
+  blue_chip: 0.95,          // buy at ≤95% of FMV
+  standard: 0.80,           // buy at ≤80% of FMV
+  psa10_blue_chip: 0.95,    // PSA 10 blue chip Tier 1: buy at ≤95% of grade FMV
+  psa10_standard: 0.90,     // PSA 10 standard: buy at ≤90% of grade FMV
+  raw_psa10_ratio: 3.0,     // raw card: PSA 10 value must be 3x+ purchase price
   min_price: 100,
   max_price_standard: 2500,
   max_price_blue_chip: Infinity,

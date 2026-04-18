@@ -48,7 +48,7 @@ async function send(body) {
 // ── BIN deal alert — Connor must reply YES to purchase ───────────────────────
 async function sendDealAlert({
   dealId, playerName, cardDescription, price, fmv, netFmv,
-  discountPct, netDiscountPct, source, aiGrade, lowConfidenceFmv, rarity,
+  discountPct, netDiscountPct, source, aiGrade, lowConfidenceFmv, rarity, hasBestOffer,
 }) {
   const netStr = netFmv != null
     ? ` → net $${netFmv.toFixed(0)} (${netDiscountPct ?? discountPct}% under net).`
@@ -66,10 +66,13 @@ async function sendDealAlert({
     gradeStr = `\nAI Grade: ${aiGrade.estimatedGrade} (${conf}% conf) → ${aiGrade.recommendation}`;
   }
 
+  const listingType = hasBestOffer ? 'BIN+BO' : 'BIN';
+  const boStr = hasBestOffer ? '\n💬 Best Offer accepted — try lowballing.' : '';
+
   const body =
     `[DEAL #${dealId}] ${playerName} — ${cardDescription}\n` +
-    `${source} BIN $${price.toFixed(0)} vs $${fmv.toFixed(0)} FMV${netStr}` +
-    confStr + gradeStr + `\nReply YES to buy. PASS to skip.`;
+    `${source} ${listingType} $${price.toFixed(0)} vs $${fmv.toFixed(0)} FMV${netStr}` +
+    confStr + gradeStr + boStr + `\nReply YES to buy. PASS to skip.`;
   return send(body);
 }
 

@@ -4,7 +4,7 @@ const { getDb, getSetting, checkWeeklySpend } = require('../db');
 const { sendDealAlert, sendSnipeAlert } = require('../alerts/sms');
 const { gradeCard } = require('./condition-grader');
 const urgentWatcher = require('../scanner/urgent-watcher');
-const { URGENT_DEAL_WINDOW_HOURS } = require('../config');
+const { THRESHOLDS, URGENT_DEAL_WINDOW_HOURS } = require('../config');
 
 // ── Rarity classifier ─────────────────────────────────────────────────────────
 // Detects serial-numbered and 1/1 cards from listing title/description.
@@ -87,12 +87,24 @@ function evaluateListing({ listing, fmvRow, tier, targetRow }) {
   if (price < minPrice) return null;
   if (price > maxPrice) return null;
 
-  // ── Guardrail 4: Net-of-fees deal math (20% under net FMV) ───────────────
-  // net_fmv = FMV × (1 − eBay FVF %) − shipping; qualify if price ≤ net_fmv × 0.80
+  // ── Guardrail 4: Grade-aware deal math ───────────────────────────────────
+  // PSA 10 slabs: relaxed thresholds because high-grade slabs carry a premium
+  //   and are easier to flip — blue chip ≤95% FMV, standard ≤90% FMV.
+  // Everything else: must be ≤80% of net FMV (after eBay fees + shipping).
   const ebayFvfPct      = parseFloat(getSetting('ebay_fvf_pct')      || process.env.EBAY_FVF_PCT      || '0.13');
   const shippingCostUsd = parseFloat(getSetting('shipping_cost_usd') || process.env.SHIPPING_COST_USD || '5');
   const netFmv          = fmv * (1 - ebayFvfPct) - shippingCostUsd;
-  const targetPrice     = netFmv * 0.80;
+
+  const isPsa10 = /^PSA\s*10$/i.test(String(listing.grade || '').trim());
+  let targetPrice;
+  if (isPsa10) {
+    const psa10Ratio = tier === 'blue_chip'
+      ? (THRESHOLDS.psa10_blue_chip || 0.95)
+      : (THRESHOLDS.psa10_standard  || 0.90);
+    targetPrice = fmv * psa10Ratio;
+  } else {
+    targetPrice = netFmv * 0.80;
+  }
 
   if (price > targetPrice) return null;
 
@@ -298,6 +310,7 @@ async function processListings(listings) {
           lowConfidenceFmv: evaluation.lowConfidenceFmv,
           rarity: evaluation.rarity,
           source: listing.source || 'eBay',
+          hasBestOffer: listing.hasBestOffer || false,
           aiGrade,
         });
         db.prepare('UPDATE deals SET sms_sent_at=CURRENT_TIMESTAMP, status=? WHERE id=?')

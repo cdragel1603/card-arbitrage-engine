@@ -156,6 +156,15 @@ async function searchBinListings(query, opts = {}) {
   });
 }
 
+// ── Browse API: search Best Offer listings ───────────────────────────────────
+// Captures listings where seller accepts offers (includes BIN+BO and BO-only).
+async function searchBestOfferListings(query, opts = {}) {
+  return searchActiveListings(query, {
+    ...opts,
+    filters: ['buyingOptions:{BEST_OFFER}', ...(opts.filters || [])],
+  });
+}
+
 // ── Browse API: search auctions ending soon ──────────────────────────────────
 async function searchEndingSoonAuctions(query, opts = {}) {
   return searchActiveListings(query, {
@@ -244,6 +253,7 @@ function normalizeItem(item) {
     url: item.itemWebUrl || `https://www.ebay.com/itm/${item.itemId}`,
     image_url: item.image?.imageUrl || null,
     type: item.buyingOptions?.includes('FIXED_PRICE') ? 'BIN' : 'auction',
+    hasBestOffer: item.buyingOptions?.includes('BEST_OFFER') || false,
     auction_end_time: endTime,
     source: 'ebay',
     condition: item.condition || null,
@@ -342,7 +352,9 @@ async function scanForDeals({ maxSearches = 15, cursor = 0 } = {}) {
     try {
       // BIN listings (acquireRateLimit is called inside retryGet)
       const bins = await searchBinListings(query, { limit: 10 });
+      const binIds = new Set();
       for (const item of bins) {
+        binIds.add(item.listing_id);
         listings.push({
           ...item,
           player_name: player.name,
@@ -352,7 +364,22 @@ async function scanForDeals({ maxSearches = 15, cursor = 0 } = {}) {
         });
       }
 
-      // Auctions ending soon (second call — acquireRateLimit enforces spacing)
+      // Best Offer-only listings for Tier 1 players (BO-only listings not in BIN results)
+      if (getPlayerWeight(player.name) === 3) {
+        const bos = await searchBestOfferListings(query, { limit: 5 });
+        for (const item of bos) {
+          if (binIds.has(item.listing_id)) continue; // already captured in BIN results
+          listings.push({
+            ...item,
+            player_name: player.name,
+            card_set: target.card_set,
+            grade,
+            description: `${player.name} ${target.card_set} ${grade}`,
+          });
+        }
+      }
+
+      // Auctions ending soon (next call — acquireRateLimit enforces spacing)
       const auctions = await searchEndingSoonAuctions(query, { limit: 5 });
       for (const item of auctions) {
         if (!item.auction_end_time) continue;
@@ -427,6 +454,7 @@ module.exports = {
   validateEbayCredentials,
   searchActiveListings,
   searchBinListings,
+  searchBestOfferListings,
   searchEndingSoonAuctions,
   fetchSoldComps,
   fetchItemById,
