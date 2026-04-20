@@ -19,7 +19,7 @@ const { sendPsa10Alert } = require('../alerts/sms');
 
 // ── Target players and search queries ────────────────────────────────────────
 // Each query appends -PSA -BGS -SGC -graded -slab to exclude slabbed listings.
-const RAW_EXCLUSIONS = '-PSA -BGS -SGC -graded -slab';
+const RAW_EXCLUSIONS = '-PSA -BGS -SGC -graded -slab -oversized';
 
 const PSA10_TARGETS = [
   // ── NFL: 2025 Topps Chrome + Optic/Donruss Kabooms & Downtowns ──────────
@@ -406,14 +406,15 @@ function isAlreadyScanned(db, listingId) {
 }
 
 // ── Save a candidate to DB ───────────────────────────────────────────────────
-function saveCandidate(db, { target, listing, aiGrade }) {
+function saveCandidate(db, { target, listing, aiGrade, rawFmv, psa10Fmv }) {
   const gradeNum = aiGrade ? parseInt(String(aiGrade.estimatedGrade).replace(/[^0-9]/g, ''), 10) : null;
   const result = db.prepare(`
     INSERT OR IGNORE INTO psa10_candidates(
       player_name, sport, card_description, listing_url, listing_id,
-      listing_price, image_url, ai_grade, ai_grade_num, ai_confidence,
+      listing_price, raw_fmv, psa10_fmv, image_url,
+      ai_grade, ai_grade_num, ai_confidence,
       ai_recommendation, ai_details, ai_notes
-    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     target.name,
     target.sport,
@@ -421,6 +422,8 @@ function saveCandidate(db, { target, listing, aiGrade }) {
     listing.url,
     listing.listing_id || null,
     listing.price,
+    rawFmv  || null,
+    psa10Fmv || null,
     listing.image_url || null,
     aiGrade?.estimatedGrade || null,
     gradeNum,
@@ -432,18 +435,27 @@ function saveCandidate(db, { target, listing, aiGrade }) {
   return result.lastInsertRowid;
 }
 
-// ── Lookup raw FMV from fmv_estimates (grade='RAW') or best available ────────
+// ── FMV lookups from fmv_estimates — best match by player name ───────────────
+// Returns null when the player isn't in the main watchlist yet; callers tolerate that.
 function getRawFmv(db, playerName) {
-  // Try RAW grade first, then PSA 9 as a proxy for raw market
-  const raw = db.prepare(`
-    SELECT fe.fmv
-    FROM fmv_estimates fe
+  const row = db.prepare(`
+    SELECT fe.fmv FROM fmv_estimates fe
     JOIN players p ON p.id = fe.player_id
-    WHERE p.name=? AND (fe.grade='RAW' OR fe.grade='PSA 9')
+    WHERE p.name=? AND fe.grade IN ('RAW','PSA 9')
     ORDER BY CASE fe.grade WHEN 'RAW' THEN 0 ELSE 1 END
     LIMIT 1
   `).get(playerName);
-  return raw ? raw.fmv : null;
+  return row ? row.fmv : null;
+}
+
+function getPsa10Fmv(db, playerName) {
+  const row = db.prepare(`
+    SELECT fe.fmv FROM fmv_estimates fe
+    JOIN players p ON p.id = fe.player_id
+    WHERE p.name=? AND fe.grade='PSA 10'
+    LIMIT 1
+  `).get(playerName);
+  return row ? row.fmv : null;
 }
 
 // ── Evaluate if a graded candidate meets alert thresholds ────────────────────
@@ -513,9 +525,12 @@ async function scanPsa10Candidates() {
         const titleText = String(listing.title || '');
         if (/\b(PSA|BGS|SGC|CGC|HGA|GRADED|SLAB)\b/i.test(titleText)) continue;
 
+        // Look up FMVs once per listing (cheap DB reads, no API call)
+        const rawFmv   = getRawFmv(db, target.name);
+        const psa10Fmv = getPsa10Fmv(db, target.name);
+
         if (!listing.image_url) {
-          // Still save as candidate with no AI grade (image unavailable)
-          saveCandidate(db, { target, listing, aiGrade: null });
+          saveCandidate(db, { target, listing, aiGrade: null, rawFmv, psa10Fmv });
           continue;
         }
 
@@ -526,7 +541,7 @@ async function scanPsa10Candidates() {
         });
         graded++;
 
-        const candidateId = saveCandidate(db, { target, listing, aiGrade });
+        const candidateId = saveCandidate(db, { target, listing, aiGrade, rawFmv, psa10Fmv });
 
         // Skip below PSA 8 or failed grading
         if (!aiGrade) continue;
@@ -536,8 +551,7 @@ async function scanPsa10Candidates() {
           continue;
         }
 
-        // Check price vs raw FMV threshold
-        const rawFmv = getRawFmv(db, target.name);
+        // Check price vs raw FMV threshold (rawFmv already fetched above)
         if (!meetsAlertThreshold(aiGrade, rawFmv, listing.price)) {
           console.log(
             `[PSA10Hunter] ${target.name} → ${aiGrade.estimatedGrade} — price $${listing.price} exceeds threshold` +

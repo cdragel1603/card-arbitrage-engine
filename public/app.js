@@ -568,34 +568,105 @@ const App = (() => {
   }
 
   function renderPsa10Card(c) {
-    const gradeNum   = c.ai_grade_num;
-    const conf       = c.ai_confidence != null ? Math.round(c.ai_confidence * 100) : null;
-    const details    = c.ai_details ? (() => { try { return JSON.parse(c.ai_details); } catch { return {}; } })() : {};
+    const gradeNum = c.ai_grade_num;
+    const conf     = c.ai_confidence != null ? Math.round(c.ai_confidence * 100) : null;
+    const details  = c.ai_details ? (() => { try { return JSON.parse(c.ai_details); } catch { return {}; } })() : {};
 
     const gradeColor = gradeNum >= 10 ? 'var(--gold)' : gradeNum >= 9 ? 'var(--green)' : 'var(--cream)';
     const gradeLabel = c.ai_grade || 'Ungraded';
-    const confLabel  = conf != null ? `${conf}% conf` : '';
 
-    const subGrades = [
-      details.corners   != null ? `Ctr:${details.centering}` : null,
-      details.corners   != null ? `Cor:${details.corners}`   : null,
-      details.edges     != null ? `Edg:${details.edges}`     : null,
-      details.surface   != null ? `Srf:${details.surface}`   : null,
-    ].filter(Boolean).join(' · ');
-
-    const imgHtml = c.image_url
-      ? `<div class="deal-image-wrap" style="text-align:center;margin-bottom:0.75rem">
-           <img src="${esc(c.image_url)}" alt="${esc(c.player_name)}" loading="lazy"
-             style="max-height:160px;max-width:100%;border-radius:6px;object-fit:contain;background:#1a1a2e" />
+    // ── Sub-grades row ─────────────────────────────────────────────────────
+    const subGradeParts = [
+      details.centering != null ? `Ctr ${details.centering}` : null,
+      details.corners   != null ? `Cor ${details.corners}`   : null,
+      details.edges     != null ? `Edg ${details.edges}`     : null,
+      details.surface   != null ? `Srf ${details.surface}`   : null,
+    ].filter(Boolean);
+    const subGradesHtml = subGradeParts.length
+      ? `<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.3rem">
+           ${subGradeParts.map(s => {
+             const val = parseFloat(s.split(' ')[1]);
+             const col = val >= 9.5 ? 'var(--gold)' : val >= 9 ? 'var(--green)' : val >= 8 ? 'var(--cream)' : '#f78166';
+             return `<span style="font-size:0.68rem;font-family:monospace;color:${col};background:rgba(255,255,255,0.05);padding:0.1rem 0.3rem;border-radius:3px">${esc(s)}</span>`;
+           }).join('')}
          </div>`
       : '';
 
-    const fmvHtml = c.raw_fmv
-      ? `<div style="font-size:0.75rem;color:var(--muted)">Raw FMV: ~$${fmt(c.raw_fmv)}</div>`
+    // ── Pricing intelligence panel ─────────────────────────────────────────
+    const price    = c.listing_price;
+    const rawFmv   = c.raw_fmv;
+    const psa10Fmv = c.psa10_fmv;
+
+    // Spread: what you'd gain by buying and grading (net of ~$50 grading + shipping)
+    const GRADING_COST = 50;
+    const spreadNet  = psa10Fmv ? psa10Fmv - price - GRADING_COST : null;
+    const spreadPct  = spreadNet != null && price > 0 ? Math.round(spreadNet / price * 100) : null;
+    const spreadPos  = spreadNet != null && spreadNet > 0;
+
+    const pricingRows = [];
+    pricingRows.push(
+      `<div style="display:flex;justify-content:space-between;align-items:center">
+         <span style="color:var(--muted);font-size:0.75rem">List price</span>
+         <span style="font-weight:700;font-size:0.9rem">$${fmt(price)}</span>
+       </div>`
+    );
+    if (rawFmv) {
+      const rawDiff = rawFmv - price;
+      const rawPos  = rawDiff >= 0;
+      pricingRows.push(
+        `<div style="display:flex;justify-content:space-between;align-items:center">
+           <span style="color:var(--muted);font-size:0.75rem">Raw FMV</span>
+           <span style="font-size:0.8rem">$${fmt(rawFmv)}
+             <span style="font-size:0.7rem;color:${rawPos ? 'var(--green)' : '#f78166'};margin-left:0.25rem">${rawPos ? '+' : ''}$${fmt(Math.abs(rawDiff))}</span>
+           </span>
+         </div>`
+      );
+    }
+    if (psa10Fmv) {
+      pricingRows.push(
+        `<div style="display:flex;justify-content:space-between;align-items:center">
+           <span style="color:var(--muted);font-size:0.75rem">PSA 10 FMV</span>
+           <span style="font-size:0.8rem;color:var(--gold)">$${fmt(psa10Fmv)}</span>
+         </div>`
+      );
+    }
+    if (spreadNet != null) {
+      pricingRows.push(
+        `<div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.08);margin-top:0.3rem;padding-top:0.3rem">
+           <span style="color:var(--muted);font-size:0.72rem">Net after grading (~$${GRADING_COST})</span>
+           <span style="font-weight:700;font-size:0.82rem;color:${spreadPos ? 'var(--green)' : '#f78166'}">${spreadPos ? '+' : ''}$${fmt(spreadNet)} ${spreadPct != null ? `(${spreadPct}%)` : ''}</span>
+         </div>`
+      );
+    }
+
+    const pricingHtml = `
+      <div style="margin:0.6rem 0;padding:0.5rem;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid rgba(255,255,255,0.07);display:flex;flex-direction:column;gap:0.25rem">
+        ${pricingRows.join('')}
+      </div>`;
+
+    // ── Confidence bar ─────────────────────────────────────────────────────
+    const confBarColor = conf >= 80 ? 'var(--gold)' : conf >= 65 ? 'var(--green)' : 'var(--muted)';
+    const confHtml = conf != null
+      ? `<div style="margin-bottom:0.5rem">
+           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.2rem">
+             <span style="font-size:0.72rem;color:var(--muted)">PSA 10 confidence</span>
+             <span style="font-size:0.8rem;font-weight:700;color:${confBarColor}">${conf}%</span>
+           </div>
+           <div style="height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden">
+             <div style="height:100%;width:${conf}%;background:${confBarColor};border-radius:2px;transition:width 0.3s"></div>
+           </div>
+         </div>`
       : '';
 
     const notesHtml = c.ai_notes
-      ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:0.35rem;font-style:italic">${esc(c.ai_notes.slice(0, 100))}</div>`
+      ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:0.3rem;font-style:italic;line-height:1.4">${esc(c.ai_notes.slice(0, 120))}</div>`
+      : '';
+
+    const imgHtml = c.image_url
+      ? `<div style="text-align:center;margin-bottom:0.75rem">
+           <img src="${esc(c.image_url)}" alt="${esc(c.player_name)}" loading="lazy"
+             style="max-height:160px;max-width:100%;border-radius:6px;object-fit:contain;background:#1a1a2e" />
+         </div>`
       : '';
 
     const alertBadge = c.alert_sent
@@ -610,24 +681,23 @@ const App = (() => {
         </div>
         ${imgHtml}
         <div class="player-name">${esc(c.player_name)}</div>
-        <div class="card-desc">${esc(c.card_description)}</div>
+        <div class="card-desc" style="margin-bottom:0.6rem">${esc(c.card_description)}</div>
 
-        <div style="margin:0.6rem 0;padding:0.5rem;background:rgba(255,255,255,0.04);border-radius:6px;border:1px solid rgba(255,255,255,0.08)">
-          <div style="font-size:0.9rem;font-weight:700;color:${gradeColor}">${esc(gradeLabel)} <span style="font-size:0.75rem;font-weight:400;color:var(--muted)">${confLabel}</span></div>
-          ${subGrades ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:0.2rem;font-family:monospace">${esc(subGrades)}</div>` : ''}
+        <!-- AI Grade badge + confidence bar -->
+        <div style="padding:0.5rem;background:rgba(255,255,255,0.04);border-radius:6px;border:1px solid rgba(255,255,255,0.08);margin-bottom:0.5rem">
+          <div style="font-size:0.88rem;font-weight:700;color:${gradeColor};margin-bottom:0.35rem">${esc(gradeLabel)}</div>
+          ${confHtml}
+          ${subGradesHtml}
           ${notesHtml}
         </div>
 
-        <div class="deal-prices">
-          <span class="deal-price-buy">$${fmt(c.listing_price)}</span>
-          ${fmvHtml}
-        </div>
+        <!-- Pricing intelligence: list price / raw FMV / PSA 10 FMV / spread -->
+        ${pricingHtml}
 
         <div class="deal-meta" style="margin-top:0.5rem">
           <span class="deal-tag bin">💰 BIN/BO</span>
           <span class="deal-tag source">eBay</span>
         </div>
-
         <div class="deal-actions" style="margin-top:0.75rem">
           ${c.listing_url
             ? `<a href="${esc(c.listing_url)}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">View on eBay ↗</a>`

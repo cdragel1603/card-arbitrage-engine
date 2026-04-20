@@ -162,6 +162,9 @@ function initDb() {
       ON psa10_candidates(ai_grade_num DESC, ai_confidence DESC, scanned_at DESC);
   `);
 
+  // ── Migration: add psa10_fmv to psa10_candidates if not present ────────────
+  try { db.exec('ALTER TABLE psa10_candidates ADD COLUMN psa10_fmv REAL'); } catch { /* already exists */ }
+
   // ── Migrations: add AI grading columns to deals if not present ─────────────
   // ALTER TABLE ADD COLUMN throws if the column already exists, so wrap each.
   const aiCols = [
