@@ -10,6 +10,7 @@ const { runMockScan, seedMockFmv } = require('./mock');
 const { processListings, expireStaleDeals } = require('../engine/deal-detector');
 const { sendDailySummary } = require('../alerts/sms');
 const { startUrgentWatcher } = require('./urgent-watcher');
+const { scanPsa10Candidates, expireOldCandidates } = require('./psa10-hunter');
 const { SCAN_PRIORITY } = require('../config');
 
 const MOCK_MODE = process.env.MOCK_SCANNER !== 'false';
@@ -24,6 +25,9 @@ const SCAN_BATCH_SIZE = parseInt(process.env.SCAN_BATCH_SIZE || '15', 10);
 // Tier 1 comp refresh: default 60 min, tunable via TIER1_COMP_REFRESH_INTERVAL_MINUTES
 const TIER1_REFRESH_INTERVAL_MS =
   parseInt(process.env.TIER1_COMP_REFRESH_INTERVAL_MINUTES || '60', 10) * 60 * 1000;
+// PSA 10 Hunter runs on its own interval — default 15 min, tunable via env.
+const PSA10_HUNTER_INTERVAL_MS =
+  parseInt(process.env.PSA10_HUNTER_INTERVAL_MINUTES || '15', 10) * 60 * 1000;
 
 let scanTimeout = null;
 let scanCursor  = 0; // rotates through all (player × target × grade) triples
@@ -173,6 +177,23 @@ async function startScheduler() {
 
   // Expire stale deals every 5 minutes
   cron.schedule('*/5 * * * *', expireStaleDeals);
+
+  // PSA 10 Hunter — separate job on its own interval (default 15 min)
+  if (!MOCK_MODE) {
+    setTimeout(async () => {
+      await scanPsa10Candidates().catch(err => console.error('[Scheduler] PSA10 Hunter error:', err.message));
+      setInterval(async () => {
+        await scanPsa10Candidates().catch(err => console.error('[Scheduler] PSA10 Hunter error:', err.message));
+      }, PSA10_HUNTER_INTERVAL_MS);
+    }, 30_000); // stagger 30s after startup so eBay token is warmed up
+    const psa10Mins = PSA10_HUNTER_INTERVAL_MS / 60000;
+    console.log(`[Scheduler] PSA 10 Hunter running every ${psa10Mins}m (first run in 30s)`);
+
+    // Expire candidates older than 24h — runs every hour
+    cron.schedule('0 * * * *', expireOldCandidates);
+  } else {
+    console.log('[Scheduler] Mock mode — PSA 10 Hunter skipped');
+  }
 }
 
 function stopScheduler() {

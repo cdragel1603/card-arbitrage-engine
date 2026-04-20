@@ -5,6 +5,7 @@ const { getDb, getSetting, setSetting, getWeeklySpend } = require('../db');
 const { getPriceHistory, calcRawBreakEven } = require('../engine/pricing');
 const { gradeCard } = require('../engine/condition-grader');
 const { runScanCycle, refreshAllComps } = require('../scanner/scheduler');
+const { scanPsa10Candidates, PSA10_TARGETS } = require('../scanner/psa10-hunter');
 const { sendTestSms } = require('../alerts/sms');
 
 const router = express.Router();
@@ -276,6 +277,69 @@ router.get('/scanner/status', (req, res) => {
     lastCompRefresh: lastFmv?.last_updated || null,
     scanIntervalSeconds: parseInt(process.env.SCAN_INTERVAL_SECONDS || '45', 10),
   });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// PSA 10 Hunter
+// ────────────────────────────────────────────────────────────────────────────
+
+// GET /api/psa10/candidates — sorted by AI grade confidence
+router.get('/psa10/candidates', (req, res) => {
+  const db = getDb();
+  const { player, sport, status = 'candidate', limit = 100 } = req.query;
+
+  let sql = `
+    SELECT * FROM psa10_candidates
+    WHERE status=?
+  `;
+  const params = [status];
+
+  if (player) { sql += ' AND player_name=?';    params.push(player); }
+  if (sport)  { sql += ' AND sport=?';           params.push(sport);  }
+
+  sql += ' ORDER BY ai_grade_num DESC, ai_confidence DESC, scanned_at DESC LIMIT ?';
+  params.push(parseInt(limit, 10));
+
+  const rows = db.prepare(sql).all(...params);
+  res.json(rows);
+});
+
+// GET /api/psa10/stats — summary counts for the dashboard stat chip
+router.get('/psa10/stats', (req, res) => {
+  const db = getDb();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const totalActive  = db.prepare(`SELECT COUNT(*) as n FROM psa10_candidates WHERE status='candidate'`).get();
+  const todayScanned = db.prepare(`SELECT COUNT(*) as n FROM psa10_candidates WHERE DATE(scanned_at)=?`).get(today);
+  const psa10Count   = db.prepare(`SELECT COUNT(*) as n FROM psa10_candidates WHERE status='candidate' AND ai_grade_num=10`).get();
+  const psa9Count    = db.prepare(`SELECT COUNT(*) as n FROM psa10_candidates WHERE status='candidate' AND ai_grade_num=9`).get();
+
+  res.json({
+    activeCount:  totalActive.n,
+    todayScanned: todayScanned.n,
+    psa10Count:   psa10Count.n,
+    psa9Count:    psa9Count.n,
+    targets:      PSA10_TARGETS.length,
+  });
+});
+
+// GET /api/psa10/players — unique player names in the hunter targets list
+router.get('/psa10/players', (req, res) => {
+  const players = PSA10_TARGETS.map(t => ({ name: t.name, sport: t.sport }));
+  res.json(players);
+});
+
+// PATCH /api/psa10/candidates/:id/pass — dismiss a candidate
+router.patch('/psa10/candidates/:id/pass', (req, res) => {
+  const db = getDb();
+  db.prepare(`UPDATE psa10_candidates SET status='passed' WHERE id=?`).run(req.params.id);
+  res.json({ ok: true });
+});
+
+// POST /api/psa10/scan-now — trigger a manual hunter scan cycle
+router.post('/psa10/scan-now', async (req, res) => {
+  res.json({ ok: true, message: 'PSA 10 Hunter scan triggered' });
+  scanPsa10Candidates().catch(console.error);
 });
 
 // ────────────────────────────────────────────────────────────────────────────

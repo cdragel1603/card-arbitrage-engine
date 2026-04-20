@@ -139,6 +139,34 @@ async function sendLastChanceAlert({
   return send(body);
 }
 
+// ── PSA 10 Hunter candidate alert ────────────────────────────────────────────
+async function sendPsa10Alert({
+  candidateId, playerName, sport, cardDescription, price, rawFmv, listingUrl, aiGrade,
+}) {
+  const gradeNum  = aiGrade ? parseInt(String(aiGrade.estimatedGrade).replace(/[^0-9]/g, ''), 10) : null;
+  const conf      = aiGrade ? Math.round(aiGrade.confidence * 100) : null;
+  const details   = aiGrade?.details || {};
+
+  const gradeStr  = aiGrade ? `AI Grade: ${aiGrade.estimatedGrade} (${conf}% conf)` : 'AI Grade: unavailable';
+  const detailStr = (details.corners || details.edges || details.surface || details.centering)
+    ? `Corners:${details.corners ?? '?'} Edges:${details.edges ?? '?'} Surface:${details.surface ?? '?'} Ctr:${details.centering ?? '?'}`
+    : '';
+  const fmvStr    = rawFmv ? ` | Raw FMV ~$${rawFmv.toFixed(0)}` : '';
+  const noteStr   = aiGrade?.notes ? `\n${aiGrade.notes.slice(0, 120)}` : '';
+  const urlStr    = listingUrl ? `\n${listingUrl}` : '';
+
+  const body =
+    `🎯 PSA 10 CANDIDATE [#${candidateId}] ${sport}\n` +
+    `${playerName} — ${cardDescription}\n` +
+    `${gradeStr}\n` +
+    (detailStr ? `${detailStr}\n` : '') +
+    `Price: $${price.toFixed(0)}${fmvStr}` +
+    noteStr + urlStr +
+    `\nReply YES to buy. PASS to skip.`;
+
+  return send(body);
+}
+
 // ── Test SMS ─────────────────────────────────────────────────────────────────
 async function sendTestSms() {
   return send('[CrazyCardzCo] Card Arbitrage Engine is online and monitoring. 🃏');
@@ -151,5 +179,6 @@ module.exports = {
   sendUrgentReminder,
   sendLastChanceAlert,
   sendDailySummary,
+  sendPsa10Alert,
   sendTestSms,
 };

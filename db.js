@@ -133,6 +133,35 @@ function initDb() {
     );
   `);
 
+  // ── PSA 10 Hunter candidates table ────────────────────────────────────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS psa10_candidates (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      player_name      TEXT NOT NULL,
+      sport            TEXT NOT NULL,
+      card_description TEXT NOT NULL,
+      listing_url      TEXT,
+      listing_id       TEXT UNIQUE,
+      listing_price    REAL NOT NULL,
+      raw_fmv          REAL,
+      image_url        TEXT,
+      ai_grade         TEXT,
+      ai_grade_num     INTEGER,
+      ai_confidence    REAL,
+      ai_recommendation TEXT,
+      ai_details       TEXT,
+      ai_notes         TEXT,
+      alert_sent       INTEGER NOT NULL DEFAULT 0,
+      sms_sent_at      DATETIME,
+      status           TEXT NOT NULL DEFAULT 'candidate'
+                       CHECK(status IN ('candidate','passed','purchased')),
+      scanned_at       DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_psa10_grade_conf
+      ON psa10_candidates(ai_grade_num DESC, ai_confidence DESC, scanned_at DESC);
+  `);
+
   // ── Migrations: add AI grading columns to deals if not present ─────────────
   // ALTER TABLE ADD COLUMN throws if the column already exists, so wrap each.
   const aiCols = [

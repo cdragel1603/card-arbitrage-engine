@@ -21,6 +21,7 @@ const App = (() => {
         if (btn.dataset.section === 'prices')    { loadFmv(); }
         if (btn.dataset.section === 'watchlist') { loadPlayers(); }
         if (btn.dataset.section === 'settings')  { loadSettings(); }
+        if (btn.dataset.section === 'psa10')     { loadPsa10Stats(); loadPsa10Players(); loadPsa10Candidates(); }
       });
     });
   }
@@ -502,6 +503,155 @@ const App = (() => {
     } catch (e) { toast(e.message || 'Error updating password', 'error'); }
   }
 
+  // ── PSA 10 Hunter ─────────────────────────────────────────────────────────
+  async function loadPsa10Stats() {
+    try {
+      const s = await api('/api/psa10/stats');
+      setText('p10-active',  s.activeCount);
+      setText('p10-psa10',   s.psa10Count);
+      setText('p10-psa9',    s.psa9Count);
+      setText('p10-today',   s.todayScanned);
+      setText('p10-targets', s.targets);
+    } catch (e) { console.warn('PSA10 stats load failed:', e.message); }
+  }
+
+  async function loadPsa10Players() {
+    try {
+      const players = await api('/api/psa10/players');
+      const sel = document.getElementById('p10-filter-player');
+      if (!sel) return;
+      const currentVal = sel.value;
+      // Preserve existing "All Players" option
+      const extras = players.map(p =>
+        `<option value="${esc(p.name)}">${esc(p.name)} (${esc(p.sport)})</option>`
+      ).join('');
+      sel.innerHTML = `<option value="">All Players</option>${extras}`;
+      if (currentVal) sel.value = currentVal;
+    } catch (e) { /* ignore */ }
+  }
+
+  async function loadPsa10Candidates() {
+    const grid    = document.getElementById('psa10-grid');
+    const sport   = document.getElementById('p10-filter-sport')?.value  || '';
+    const player  = document.getElementById('p10-filter-player')?.value || '';
+    const gradeEl = document.getElementById('p10-filter-grade');
+    const gradeFilter = gradeEl ? gradeEl.value : '';
+
+    try {
+      let url = '/api/psa10/candidates?limit=100';
+      if (sport)  url += `&sport=${encodeURIComponent(sport)}`;
+      if (player) url += `&player=${encodeURIComponent(player)}`;
+
+      let candidates = await api(url);
+
+      // Client-side grade filter (API returns all grades; filter by num)
+      if (gradeFilter) {
+        const gradeNum = parseInt(gradeFilter, 10);
+        candidates = candidates.filter(c => c.ai_grade_num === gradeNum);
+      }
+
+      if (candidates.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1">
+            <div class="icon">🎯</div>
+            <p>No candidates match the current filter.</p>
+            <p style="margin-top:0.4rem;font-size:0.8rem">Hunter scans raw listings every 15 min and grades with GPT-4o Vision.</p>
+          </div>`;
+        return;
+      }
+
+      grid.innerHTML = candidates.map(renderPsa10Card).join('');
+    } catch (e) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>Error loading candidates</p></div>`;
+      console.error('loadPsa10Candidates:', e);
+    }
+  }
+
+  function renderPsa10Card(c) {
+    const gradeNum   = c.ai_grade_num;
+    const conf       = c.ai_confidence != null ? Math.round(c.ai_confidence * 100) : null;
+    const details    = c.ai_details ? (() => { try { return JSON.parse(c.ai_details); } catch { return {}; } })() : {};
+
+    const gradeColor = gradeNum >= 10 ? 'var(--gold)' : gradeNum >= 9 ? 'var(--green)' : 'var(--cream)';
+    const gradeLabel = c.ai_grade || 'Ungraded';
+    const confLabel  = conf != null ? `${conf}% conf` : '';
+
+    const subGrades = [
+      details.corners   != null ? `Ctr:${details.centering}` : null,
+      details.corners   != null ? `Cor:${details.corners}`   : null,
+      details.edges     != null ? `Edg:${details.edges}`     : null,
+      details.surface   != null ? `Srf:${details.surface}`   : null,
+    ].filter(Boolean).join(' · ');
+
+    const imgHtml = c.image_url
+      ? `<div class="deal-image-wrap" style="text-align:center;margin-bottom:0.75rem">
+           <img src="${esc(c.image_url)}" alt="${esc(c.player_name)}" loading="lazy"
+             style="max-height:160px;max-width:100%;border-radius:6px;object-fit:contain;background:#1a1a2e" />
+         </div>`
+      : '';
+
+    const fmvHtml = c.raw_fmv
+      ? `<div style="font-size:0.75rem;color:var(--muted)">Raw FMV: ~$${fmt(c.raw_fmv)}</div>`
+      : '';
+
+    const notesHtml = c.ai_notes
+      ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:0.35rem;font-style:italic">${esc(c.ai_notes.slice(0, 100))}</div>`
+      : '';
+
+    const alertBadge = c.alert_sent
+      ? `<span class="deal-tag condition-grade" title="SMS alert sent">📲 Alerted</span>`
+      : '';
+
+    return `
+      <div class="deal-card" id="psa10-${c.id}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.5rem">
+          <span class="tier-badge blue_chip">${esc(c.sport)}</span>
+          ${alertBadge}
+        </div>
+        ${imgHtml}
+        <div class="player-name">${esc(c.player_name)}</div>
+        <div class="card-desc">${esc(c.card_description)}</div>
+
+        <div style="margin:0.6rem 0;padding:0.5rem;background:rgba(255,255,255,0.04);border-radius:6px;border:1px solid rgba(255,255,255,0.08)">
+          <div style="font-size:0.9rem;font-weight:700;color:${gradeColor}">${esc(gradeLabel)} <span style="font-size:0.75rem;font-weight:400;color:var(--muted)">${confLabel}</span></div>
+          ${subGrades ? `<div style="font-size:0.7rem;color:var(--muted);margin-top:0.2rem;font-family:monospace">${esc(subGrades)}</div>` : ''}
+          ${notesHtml}
+        </div>
+
+        <div class="deal-prices">
+          <span class="deal-price-buy">$${fmt(c.listing_price)}</span>
+          ${fmvHtml}
+        </div>
+
+        <div class="deal-meta" style="margin-top:0.5rem">
+          <span class="deal-tag bin">💰 BIN/BO</span>
+          <span class="deal-tag source">eBay</span>
+        </div>
+
+        <div class="deal-actions" style="margin-top:0.75rem">
+          ${c.listing_url
+            ? `<a href="${esc(c.listing_url)}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">View on eBay ↗</a>`
+            : '<span class="btn btn-primary btn-sm" style="opacity:0.4">No URL</span>'}
+          <button class="btn btn-secondary btn-sm" onclick="App.passPsa10(${c.id})">Pass</button>
+        </div>
+        <div style="font-size:0.68rem;color:var(--muted);margin-top:0.4rem;text-align:right">${timeAgo(c.scanned_at)}</div>
+      </div>`;
+  }
+
+  async function passPsa10(candidateId) {
+    await api(`/api/psa10/candidates/${candidateId}/pass`, { method: 'PATCH' });
+    const card = document.getElementById(`psa10-${candidateId}`);
+    if (card) card.style.opacity = '0.3';
+    setTimeout(loadPsa10Candidates, 400);
+    toast('Candidate passed', 'info');
+  }
+
+  async function psa10ScanNow() {
+    toast('PSA 10 Hunter scan triggered…', 'info');
+    await api('/api/psa10/scan-now', { method: 'POST' });
+    setTimeout(() => { loadPsa10Candidates(); loadPsa10Stats(); }, 5000);
+  }
+
   // ── API helper ────────────────────────────────────────────────────────────
   async function api(url, opts = {}) {
     const res = await fetch(url, {
@@ -622,6 +772,9 @@ const App = (() => {
     showPriceChart,
     refreshComps,
     editTransaction,
+    loadPsa10Candidates,
+    passPsa10,
+    psa10ScanNow,
     toast,
   };
 })();

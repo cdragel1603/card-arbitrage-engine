@@ -40,6 +40,7 @@
   <!-- ── Nav ───────────────────────────────────────────────────────────── -->
   <nav id="nav">
     <button class="nav-btn active" data-section="deals">Live Deals</button>
+    <button class="nav-btn" data-section="psa10">PSA 10 Hunter</button>
     <button class="nav-btn" data-section="watchlist">Watchlist</button>
     <button class="nav-btn" data-section="portfolio">Portfolio</button>
     <button class="nav-btn" data-section="prices">Price Intel</button>
@@ -89,6 +90,71 @@
             <div class="empty-state">
               <div class="icon">🃏</div>
               <p>Loading deals…</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- PSA 10 HUNTER                                                     -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <section id="section-psa10" class="section">
+
+      <!-- Stats strip -->
+      <div class="stats-bar" id="psa10-stats-bar" style="margin-bottom:1.25rem">
+        <div class="stat-card">
+          <div class="label">Active Candidates</div>
+          <div class="value green" id="p10-active">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">PSA 10 Calls</div>
+          <div class="value gold" id="p10-psa10">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">PSA 9 Calls</div>
+          <div class="value" id="p10-psa9">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Scanned Today</div>
+          <div class="value" id="p10-today">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Target Players</div>
+          <div class="value" id="p10-targets">–</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">🎯 PSA 10 Hunter — Raw Grading Candidates</span>
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <select id="p10-filter-sport" onchange="App.loadPsa10Candidates()" style="width:auto;padding:0.3rem 0.6rem;font-size:0.8rem">
+              <option value="">All Sports</option>
+              <option value="NFL">NFL</option>
+              <option value="NBA">NBA</option>
+              <option value="NHL">NHL</option>
+              <option value="MLB">MLB</option>
+              <option value="Soccer">Soccer</option>
+            </select>
+            <select id="p10-filter-player" onchange="App.loadPsa10Candidates()" style="width:auto;padding:0.3rem 0.6rem;font-size:0.8rem">
+              <option value="">All Players</option>
+            </select>
+            <select id="p10-filter-grade" onchange="App.loadPsa10Candidates()" style="width:auto;padding:0.3rem 0.6rem;font-size:0.8rem">
+              <option value="">All Grades</option>
+              <option value="10">PSA 10 calls</option>
+              <option value="9">PSA 9 calls</option>
+              <option value="8">PSA 8 calls</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="App.psa10ScanNow()">Scan Now</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="psa10-grid" class="deal-grid">
+            <div class="empty-state" style="grid-column:1/-1">
+              <div class="icon">🎯</div>
+              <p>No PSA 10 candidates yet.</p>
+              <p style="margin-top:0.4rem;font-size:0.8rem">Hunter scans raw eBay listings every 15 min and grades with GPT-4o Vision.</p>
             </div>
           </div>
         </div>
