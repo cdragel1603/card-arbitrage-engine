@@ -22,13 +22,14 @@ const { sendPsa10Alert } = require('../alerts/sms');
 const RAW_EXCLUSIONS = '-PSA -BGS -SGC -graded -slab';
 
 const PSA10_TARGETS = [
-  // ── NFL: 2025 Topps Chrome Football ──────────────────────────────────────
+  // ── NFL: 2025 Topps Chrome + Optic/Donruss Kabooms & Downtowns ──────────
   {
     name: 'Jayden Daniels',
     sport: 'NFL',
     queries: [
       `Jayden Daniels 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
       `Jayden Daniels Kaboom 2025 ${RAW_EXCLUSIONS}`,
+      `Jayden Daniels Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -37,6 +38,7 @@ const PSA10_TARGETS = [
     queries: [
       `Saquon Barkley 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
       `Saquon Barkley Kaboom 2025 ${RAW_EXCLUSIONS}`,
+      `Saquon Barkley Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -44,6 +46,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Joe Burrow 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
+      `Joe Burrow Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -52,6 +55,7 @@ const PSA10_TARGETS = [
     queries: [
       `Cam Ward 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
       `Cam Ward Topps Chrome RC ${RAW_EXCLUSIONS}`,
+      `Cam Ward Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -60,6 +64,7 @@ const PSA10_TARGETS = [
     queries: [
       `Caleb Williams 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
       `2025 Caleb Williams Kaboom ${RAW_EXCLUSIONS}`,       // Panini Absolute case hit #4 horizontal
+      `Caleb Williams Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -68,6 +73,7 @@ const PSA10_TARGETS = [
     queries: [
       `Josh Allen 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
       `Josh Allen Kaboom 2025 ${RAW_EXCLUSIONS}`,
+      `Josh Allen Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -76,6 +82,7 @@ const PSA10_TARGETS = [
     queries: [
       `Jaxson Dart 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
       `Jaxson Dart Topps Chrome RC ${RAW_EXCLUSIONS}`,
+      `Jaxson Dart Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -83,6 +90,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Tom Brady 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
+      `Tom Brady Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -91,6 +99,7 @@ const PSA10_TARGETS = [
     queries: [
       `Travis Hunter 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
       `Travis Hunter Topps Chrome RC ${RAW_EXCLUSIONS}`,
+      `Travis Hunter Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -99,6 +108,7 @@ const PSA10_TARGETS = [
     queries: [
       `Shedeur Sanders 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
       `Shedeur Sanders Topps Chrome RC ${RAW_EXCLUSIONS}`,
+      `Shedeur Sanders Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -107,6 +117,7 @@ const PSA10_TARGETS = [
     queries: [
       `Abdul Carter 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
       `Abdul Carter Topps Chrome RC ${RAW_EXCLUSIONS}`,
+      `Abdul Carter Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -115,6 +126,7 @@ const PSA10_TARGETS = [
     queries: [
       `Tetairoa McMillan 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
       `Tetairoa McMillan Topps Chrome RC ${RAW_EXCLUSIONS}`,
+      `Tetairoa McMillan Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -131,6 +143,7 @@ const PSA10_TARGETS = [
     queries: [
       `Drake Maye 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
       `Drake Maye Topps Chrome ${RAW_EXCLUSIONS}`,
+      `Drake Maye Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -138,6 +151,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Bo Nix 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
+      `Bo Nix Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -146,6 +160,7 @@ const PSA10_TARGETS = [
     queries: [
       `Malik Nabers 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
       `Malik Nabers Topps Chrome ${RAW_EXCLUSIONS}`,
+      `Malik Nabers Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -153,6 +168,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Brock Bowers 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
+      `Brock Bowers Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -161,6 +177,15 @@ const PSA10_TARGETS = [
     queries: [
       `Marvin Harrison Jr 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
       `Marvin Harrison Topps Chrome ${RAW_EXCLUSIONS}`,
+      `Marvin Harrison Jr Downtown ${RAW_EXCLUSIONS}`,
+    ],
+  },
+  {
+    name: 'Patrick Mahomes',
+    sport: 'NFL',
+    queries: [
+      `Patrick Mahomes Downtown ${RAW_EXCLUSIONS}`,
+      `Patrick Mahomes Kaboom ${RAW_EXCLUSIONS}`,
     ],
   },
 
