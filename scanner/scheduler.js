@@ -10,7 +10,7 @@ const { runMockScan, seedMockFmv } = require('./mock');
 const { processListings, expireStaleDeals } = require('../engine/deal-detector');
 const { sendDailySummary } = require('../alerts/sms');
 const { startUrgentWatcher } = require('./urgent-watcher');
-const { scanPsa10Candidates, expireOldCandidates } = require('./psa10-hunter');
+const { scanPsa10Candidates, gradeUngradedCandidates, expireOldCandidates } = require('./psa10-hunter');
 const { SCAN_PRIORITY } = require('../config');
 
 const MOCK_MODE = process.env.MOCK_SCANNER !== 'false';
@@ -182,8 +182,10 @@ async function startScheduler() {
   if (!MOCK_MODE) {
     setTimeout(async () => {
       await scanPsa10Candidates().catch(err => console.error('[Scheduler] PSA10 Hunter error:', err.message));
+      await gradeUngradedCandidates().catch(err => console.error('[Scheduler] PSA10 re-grade error:', err.message));
       setInterval(async () => {
         await scanPsa10Candidates().catch(err => console.error('[Scheduler] PSA10 Hunter error:', err.message));
+        await gradeUngradedCandidates().catch(err => console.error('[Scheduler] PSA10 re-grade error:', err.message));
       }, PSA10_HUNTER_INTERVAL_MS);
     }, 30_000); // stagger 30s after startup so eBay token is warmed up
     const psa10Mins = PSA10_HUNTER_INTERVAL_MS / 60000;

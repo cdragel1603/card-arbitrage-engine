@@ -5,7 +5,7 @@ const { getDb, getSetting, setSetting, getWeeklySpend } = require('../db');
 const { getPriceHistory, calcRawBreakEven } = require('../engine/pricing');
 const { gradeCard } = require('../engine/condition-grader');
 const { runScanCycle, refreshAllComps } = require('../scanner/scheduler');
-const { scanPsa10Candidates, PSA10_TARGETS } = require('../scanner/psa10-hunter');
+const { scanPsa10Candidates, gradeUngradedCandidates, PSA10_TARGETS } = require('../scanner/psa10-hunter');
 const { sendTestSms } = require('../alerts/sms');
 
 const router = express.Router();
@@ -283,19 +283,19 @@ router.get('/scanner/status', (req, res) => {
 // PSA 10 Hunter
 // ────────────────────────────────────────────────────────────────────────────
 
-// GET /api/psa10/candidates — sorted by AI grade confidence
+// GET /api/psa10/candidates — only GPT-4o graded cards, sorted by grade/confidence
 router.get('/psa10/candidates', (req, res) => {
   const db = getDb();
   const { player, sport, status = 'candidate', limit = 100 } = req.query;
 
   let sql = `
     SELECT * FROM psa10_candidates
-    WHERE status=?
+    WHERE status=? AND ai_grade IS NOT NULL
   `;
   const params = [status];
 
-  if (player) { sql += ' AND player_name=?';    params.push(player); }
-  if (sport)  { sql += ' AND sport=?';           params.push(sport);  }
+  if (player) { sql += ' AND player_name=?'; params.push(player); }
+  if (sport)  { sql += ' AND sport=?';        params.push(sport);  }
 
   sql += ' ORDER BY ai_grade_num DESC, ai_confidence DESC, scanned_at DESC LIMIT ?';
   params.push(parseInt(limit, 10));
@@ -336,10 +336,12 @@ router.patch('/psa10/candidates/:id/pass', (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/psa10/scan-now — trigger a manual hunter scan cycle
+// POST /api/psa10/scan-now — trigger a manual hunter scan + re-grade ungraded
 router.post('/psa10/scan-now', async (req, res) => {
   res.json({ ok: true, message: 'PSA 10 Hunter scan triggered' });
-  scanPsa10Candidates().catch(console.error);
+  scanPsa10Candidates()
+    .then(() => gradeUngradedCandidates())
+    .catch(console.error);
 });
 
 // ────────────────────────────────────────────────────────────────────────────

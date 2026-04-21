@@ -614,6 +614,56 @@ async function scanPsa10Candidates() {
   console.log(`[PSA10Hunter] Cycle complete — graded ${graded} cards, sent ${alerted} alerts`);
 }
 
+// ── Re-grade candidates that were saved before OPENAI_API_KEY was configured ──
+// Runs after each scan cycle. Picks up to HUNTER_BATCH_SIZE rows that have an
+// image_url but no ai_grade yet and grades them now. This means existing
+// candidates don't need to be re-scanned once the API key is live.
+async function gradeUngradedCandidates() {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key || key.startsWith('sk-your') || key === 'your_key_here') {
+    console.log('[PSA10Hunter] OPENAI_API_KEY not set — skipping re-grade pass');
+    return;
+  }
+
+  const db = getDb();
+
+  const rows = db.prepare(`
+    SELECT id, player_name, image_url, listing_price, raw_fmv, listing_url
+    FROM psa10_candidates
+    WHERE status='candidate' AND ai_grade IS NULL AND image_url IS NOT NULL
+    ORDER BY scanned_at DESC
+    LIMIT ?
+  `).all(HUNTER_BATCH_SIZE);
+
+  if (rows.length === 0) return;
+  console.log(`[PSA10Hunter] Re-grading ${rows.length} ungraded candidate(s)…`);
+
+  let graded = 0;
+  for (const row of rows) {
+    const aiGrade = await gradeCard(row.image_url, { playerName: row.player_name });
+    if (!aiGrade) continue; // API key still not set — stop early
+
+    const gradeNum = parseInt(String(aiGrade.estimatedGrade).replace(/[^0-9]/g, ''), 10);
+    db.prepare(`
+      UPDATE psa10_candidates SET
+        ai_grade=?, ai_grade_num=?, ai_confidence=?,
+        ai_recommendation=?, ai_details=?, ai_notes=?
+      WHERE id=?
+    `).run(
+      aiGrade.estimatedGrade,
+      gradeNum,
+      aiGrade.confidence,
+      aiGrade.recommendation,
+      aiGrade.details ? JSON.stringify(aiGrade.details) : null,
+      aiGrade.notes || null,
+      row.id,
+    );
+    graded++;
+  }
+
+  if (graded > 0) console.log(`[PSA10Hunter] Re-graded ${graded} candidate(s)`);
+}
+
 // ── Expire old candidates (>24h) ──────────────────────────────────────────────
 function expireOldCandidates() {
   const db = getDb();
@@ -628,6 +678,7 @@ function expireOldCandidates() {
 
 module.exports = {
   scanPsa10Candidates,
+  gradeUngradedCandidates,
   expireOldCandidates,
   PSA10_TARGETS,
 };

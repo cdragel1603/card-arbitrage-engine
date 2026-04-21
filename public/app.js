@@ -554,8 +554,8 @@ const App = (() => {
         grid.innerHTML = `
           <div class="empty-state" style="grid-column:1/-1">
             <div class="icon">🎯</div>
-            <p>No candidates match the current filter.</p>
-            <p style="margin-top:0.4rem;font-size:0.8rem">Hunter scans raw listings every 15 min and grades with GPT-4o Vision.</p>
+            <p>No GPT-4o graded cards yet${gradeFilter || sport || player ? ' matching this filter' : ''}.</p>
+            <p style="margin-top:0.4rem;font-size:0.8rem">Only cards analyzed by GPT-4o Vision appear here. Ensure <strong>OPENAI_API_KEY</strong> is set on Railway, then click <strong>Scan Now</strong> to grade existing candidates.</p>
           </div>`;
         return;
       }
