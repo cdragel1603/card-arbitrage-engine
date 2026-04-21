@@ -21,22 +21,30 @@ const { sendPsa10Alert } = require('../alerts/sms');
 // Each query appends -PSA -BGS -SGC -graded -slab to exclude slabbed listings.
 const RAW_EXCLUSIONS = '-PSA -BGS -SGC -graded -slab -oversized';
 
+// For Topps Chrome: autos and case hits ONLY (no base).
+// Two companion queries per player: one for autos, one for case hits / refractors.
+// Case hit terms: SSP (super short print), UV (ultra violet refractor),
+// atomic (Atomic refractor), image variation — all signal a premium non-base card.
+const CHROME_CASE_HITS = 'SSP UV atomic "case hit" "image variation"';
+
 const PSA10_TARGETS = [
-  // ── NFL: 2025 Topps Chrome + Optic/Donruss Kabooms & Downtowns ──────────
+  // ── NFL: 2025 Topps Chrome (AUTOS + CASE HITS only — never base) ─────────
   {
     name: 'Jayden Daniels',
     sport: 'NFL',
     queries: [
       `Jayden Daniels 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
+      `Jayden Daniels 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Jayden Daniels Kaboom 2025 ${RAW_EXCLUSIONS}`,
       `Jayden Daniels Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
+    // Spec: case hits only — no Topps Chrome autos exist for Saquon
     name: 'Saquon Barkley',
     sport: 'NFL',
     queries: [
-      `Saquon Barkley 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
+      `Saquon Barkley 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Saquon Barkley Kaboom 2025 ${RAW_EXCLUSIONS}`,
       `Saquon Barkley Downtown ${RAW_EXCLUSIONS}`,
     ],
@@ -46,6 +54,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Joe Burrow 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
+      `Joe Burrow 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Joe Burrow Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
@@ -54,7 +63,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Cam Ward 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
-      `Cam Ward Topps Chrome RC ${RAW_EXCLUSIONS}`,
+      `Cam Ward 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Cam Ward Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
@@ -63,7 +72,8 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Caleb Williams 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
-      `2025 Caleb Williams Kaboom ${RAW_EXCLUSIONS}`,       // Panini Absolute case hit #4 horizontal
+      `Caleb Williams 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
+      `2025 Caleb Williams Kaboom ${RAW_EXCLUSIONS}`,
       `Caleb Williams Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
@@ -72,6 +82,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Josh Allen 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
+      `Josh Allen 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Josh Allen Kaboom 2025 ${RAW_EXCLUSIONS}`,
       `Josh Allen Downtown ${RAW_EXCLUSIONS}`,
     ],
@@ -81,7 +92,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Jaxson Dart 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
-      `Jaxson Dart Topps Chrome RC ${RAW_EXCLUSIONS}`,
+      `Jaxson Dart 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Jaxson Dart Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
@@ -90,6 +101,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Tom Brady 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
+      `Tom Brady 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Tom Brady Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
@@ -98,7 +110,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Travis Hunter 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
-      `Travis Hunter Topps Chrome RC ${RAW_EXCLUSIONS}`,
+      `Travis Hunter 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Travis Hunter Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
@@ -107,7 +119,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Shedeur Sanders 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
-      `Shedeur Sanders Topps Chrome RC ${RAW_EXCLUSIONS}`,
+      `Shedeur Sanders 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Shedeur Sanders Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
@@ -116,7 +128,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Abdul Carter 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
-      `Abdul Carter Topps Chrome RC ${RAW_EXCLUSIONS}`,
+      `Abdul Carter 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Abdul Carter Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
@@ -125,7 +137,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Tetairoa McMillan 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
-      `Tetairoa McMillan Topps Chrome RC ${RAW_EXCLUSIONS}`,
+      `Tetairoa McMillan 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Tetairoa McMillan Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
@@ -134,7 +146,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Mason Graham 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
-      `Mason Graham Topps Chrome RC ${RAW_EXCLUSIONS}`,
+      `Mason Graham 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
     ],
   },
   {
@@ -142,7 +154,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Drake Maye 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
-      `Drake Maye Topps Chrome ${RAW_EXCLUSIONS}`,
+      `Drake Maye 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Drake Maye Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
@@ -151,6 +163,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Bo Nix 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
+      `Bo Nix 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Bo Nix Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
@@ -159,7 +172,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Malik Nabers 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
-      `Malik Nabers Topps Chrome ${RAW_EXCLUSIONS}`,
+      `Malik Nabers 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Malik Nabers Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
@@ -168,6 +181,7 @@ const PSA10_TARGETS = [
     sport: 'NFL',
     queries: [
       `Brock Bowers 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
+      `Brock Bowers 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Brock Bowers Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
@@ -175,31 +189,33 @@ const PSA10_TARGETS = [
     name: 'Marvin Harrison Jr',
     sport: 'NFL',
     queries: [
-      `Marvin Harrison Jr 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
-      `Marvin Harrison Topps Chrome ${RAW_EXCLUSIONS}`,
-      `Marvin Harrison Jr Downtown ${RAW_EXCLUSIONS}`,
+      `"Marvin Harrison Jr" 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
+      `"Marvin Harrison Jr" 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
+      `"Marvin Harrison Jr" Downtown ${RAW_EXCLUSIONS}`,
     ],
   },
   {
     name: 'Patrick Mahomes',
     sport: 'NFL',
     queries: [
+      `Patrick Mahomes 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
       `Patrick Mahomes Downtown ${RAW_EXCLUSIONS}`,
       `Patrick Mahomes Kaboom ${RAW_EXCLUSIONS}`,
     ],
   },
 
-  // ── NBA: Blue-chip inserts (Kabooms/Downtowns have centering issues → AI edge) ─
+  // ── NBA: Steph Curry Kabooms, Downtowns, 2025 Topps Chrome (autos/case hits) ─
   {
     name: 'Stephen Curry',
     sport: 'NBA',
     queries: [
+      `Steph Curry 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
+      `Stephen Curry 2025 Topps Chrome auto ${RAW_EXCLUSIONS}`,
+      `Steph Curry 2025 Topps Chrome ${CHROME_CASE_HITS} ${RAW_EXCLUSIONS}`,
       `Steph Curry Kaboom ${RAW_EXCLUSIONS}`,
       `Stephen Curry Kaboom ${RAW_EXCLUSIONS}`,
       `Steph Curry Downtown ${RAW_EXCLUSIONS}`,
       `Stephen Curry Downtown ${RAW_EXCLUSIONS}`,
-      `Steph Curry 2025 Topps Chrome ${RAW_EXCLUSIONS}`,
-      `Stephen Curry 2025 Topps Chrome ${RAW_EXCLUSIONS}`,
     ],
   },
 
@@ -534,10 +550,18 @@ async function scanPsa10Candidates() {
           continue;
         }
 
-        // Run GPT-4o Vision grading on every listing (no price gate)
+        // Run GPT-4o Vision grading on every listing (no price gate).
+        // Infer the card set from the query so GPT-4o gets accurate context.
+        let cardSetHint = '2025 Topps Chrome';
+        if (target.sport === 'NHL')                           cardSetHint = 'Upper Deck Young Guns';
+        else if (/kaboom/i.test(query))                       cardSetHint = 'Panini Kaboom';
+        else if (/downtown/i.test(query))                     cardSetHint = 'Panini Downtown';
+        else if (/soccer|messi|ronaldo|mbappe|haaland/i.test(query)) cardSetHint = 'Soccer Kaboom';
+        else if (/baseball|ohtani|judge|bowman/i.test(query)) cardSetHint = 'Baseball Chrome';
+
         const aiGrade = await gradeCard(listing.image_url, {
           playerName: target.name,
-          cardSet:    target.sport === 'NHL' ? 'Young Guns' : '2025 Topps Chrome',
+          cardSet:    cardSetHint,
         });
         graded++;
 
@@ -567,7 +591,7 @@ async function scanPsa10Candidates() {
             candidateId,
             playerName:      target.name,
             sport:           target.sport,
-            cardDescription: listing.title || `${target.name} ${target.sport === 'NHL' ? 'Young Guns' : '2025 Topps Chrome'}`,
+            cardDescription: listing.title || `${target.name} — ${cardSetHint}`,
             price:           listing.price,
             rawFmv,
             listingUrl:      listing.url,
