@@ -283,19 +283,19 @@ router.get('/scanner/status', (req, res) => {
 // PSA 10 Hunter
 // ────────────────────────────────────────────────────────────────────────────
 
-// GET /api/psa10/candidates — sorted by AI grade confidence
+// GET /api/psa10/candidates — only GPT-4o graded cards, sorted by grade/confidence
 router.get('/psa10/candidates', (req, res) => {
   const db = getDb();
   const { player, sport, status = 'candidate', limit = 100 } = req.query;
 
   let sql = `
     SELECT * FROM psa10_candidates
-    WHERE status=?
+    WHERE status=? AND ai_grade IS NOT NULL
   `;
   const params = [status];
 
-  if (player) { sql += ' AND player_name=?';    params.push(player); }
-  if (sport)  { sql += ' AND sport=?';           params.push(sport);  }
+  if (player) { sql += ' AND player_name=?'; params.push(player); }
+  if (sport)  { sql += ' AND sport=?';        params.push(sport);  }
 
   sql += ' ORDER BY ai_grade_num DESC, ai_confidence DESC, scanned_at DESC LIMIT ?';
   params.push(parseInt(limit, 10));
@@ -309,8 +309,8 @@ router.get('/psa10/stats', (req, res) => {
   const db = getDb();
   const today = new Date().toISOString().slice(0, 10);
 
-  const totalActive  = db.prepare(`SELECT COUNT(*) as n FROM psa10_candidates WHERE status='candidate'`).get();
-  const todayScanned = db.prepare(`SELECT COUNT(*) as n FROM psa10_candidates WHERE DATE(scanned_at)=?`).get(today);
+  const totalActive  = db.prepare(`SELECT COUNT(*) as n FROM psa10_candidates WHERE status='candidate' AND ai_grade IS NOT NULL`).get();
+  const todayScanned = db.prepare(`SELECT COUNT(*) as n FROM psa10_candidates WHERE DATE(scanned_at)=? AND ai_grade IS NOT NULL`).get(today);
   const psa10Count   = db.prepare(`SELECT COUNT(*) as n FROM psa10_candidates WHERE status='candidate' AND ai_grade_num=10`).get();
   const psa9Count    = db.prepare(`SELECT COUNT(*) as n FROM psa10_candidates WHERE status='candidate' AND ai_grade_num=9`).get();
 

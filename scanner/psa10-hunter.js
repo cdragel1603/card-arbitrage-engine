@@ -563,7 +563,7 @@ async function scanPsa10Candidates() {
           playerName: target.name,
           cardSet:    cardSetHint,
         });
-        graded++;
+        if (aiGrade) graded++;
 
         const candidateId = saveCandidate(db, { target, listing, aiGrade, rawFmv, psa10Fmv });
 

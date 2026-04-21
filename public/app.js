@@ -554,8 +554,8 @@ const App = (() => {
         grid.innerHTML = `
           <div class="empty-state" style="grid-column:1/-1">
             <div class="icon">🎯</div>
-            <p>No candidates match the current filter.</p>
-            <p style="margin-top:0.4rem;font-size:0.8rem">Hunter scans raw listings every 15 min and grades with GPT-4o Vision.</p>
+            <p>No GPT-4o graded candidates yet.</p>
+            <p style="margin-top:0.4rem;font-size:0.8rem">Requires <code>OPENAI_API_KEY</code> in Railway env vars. Hunter scans every 15 min and grades with GPT-4o Vision — only graded cards appear here.</p>
           </div>`;
         return;
       }
